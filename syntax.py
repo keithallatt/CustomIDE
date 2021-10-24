@@ -1,6 +1,14 @@
-# syntax.py
-# https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
+"""
+syntax.py -> https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
 
+Modified the syntax.py from the python wiki to recognize keywords, read colors from
+a JSON file, and generally make it more readable.
+
+Also updated as the original looked like it did not handle things such as:
+- highlighting keyword arguments
+- highlighting the b/f/r/u string prefixes for bytes, f-strings, raw strings and unicode.
+- highlighting builtin operators such as 'str' and 'int'
+"""
 from PyQt5 import QtCore, QtGui
 from json import loads
 from re import escape
@@ -8,13 +16,8 @@ import builtins
 import inspect
 
 
-# TODO: need keyword argument to be shown as red (#aa4926)
-# TODO: need builtins in the middle of words to not be recognized.
-
-
 def format_(color, style=''):
-    """Return a QTextCharFormat with the given attributes.
-    """
+    """ Return a QTextCharFormat with the given attributes. """
     _color = QtGui.QColor()
     _color.setNamedColor(color)
 
@@ -28,12 +31,13 @@ def format_(color, style=''):
     return _format
 
 
-# Syntax styles that can be shared by all languages
+# syntax styles like for keywords or for operators / built-ins.
 STYLES = {k: format_(*v) for k, v in loads(open("syntax_highlighter.json", 'r').read()).items()}
 
 
 class PythonHighlighter(QtGui.QSyntaxHighlighter):
     """Syntax highlighter for the Python language. """
+
     # Python keywords
     keywords = [
         'and', 'assert', 'break', 'class', 'continue', 'def',
@@ -55,6 +59,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         '+=', '-=', '*=', '/=', '%=',
         # Bitwise
         '^', '|', '&', '~', '>>', '<<',
+        # In-place bitwise
+        '^=', '|=', '&=', '~=', '>>=', '<<='
     ]))
 
     # Python braces
@@ -137,9 +143,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         for expression, nth, format_ in self.rules:
             index = expression.indexIn(text, 0)
             if index >= 0:
-                # if there is a string we check
-                # if there are some triple quotes within the string
-                # they will be ignored if they are matched again
+                # if there is a string we check if there are some triple quotes
+                # within the string they will be ignored if they are matched again
                 if expression.pattern() in [r'"[^"\\]*(\\.[^"\\]*)*"', r"'[^'\\]*(\\.[^'\\]*)*'"]:
                     inner_index = self.tri_single[0].indexIn(text, index + 1)
                     if inner_index == -1:
@@ -207,5 +212,5 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             # Look for the next match
             start = delimiter.indexIn(text, start + length)
 
-        # Return True if still inside a multi-line string, False otherwise
+        # Return whether we're still inside a multi-line string
         return self.currentBlockState() == in_state
