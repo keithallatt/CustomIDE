@@ -6,6 +6,12 @@ Count lines with:
 
 -- WARNING --
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
+
+TODO:
+ - additional shortcuts
+ - make file handing work with multiple files
+ - check if file is saved before closing? maybe?
+ - add linting to code
 """
 import os
 import subprocess
@@ -16,15 +22,11 @@ from json import loads
 from PyQt5.QtCore import Qt, QDir
 from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
-                             QColumnView, QFileDialog)
+                             QColumnView, QFileDialog, QDialog)
 
 import syntax
 from additional_qwidgets import QCodeEditor, RotatedButton
-
-"""
-To add to JSON file:
-- keyboard shortcuts
-"""
+from linting import run_linter_on_code, LintDialog
 
 
 class Application(QWidget):
@@ -32,9 +34,12 @@ class Application(QWidget):
         super().__init__(parent)
         self.resize(2200, 1800)
         self.move(200, 100)
-        self.setWindowTitle("Custom IDE @ Keith Allatt")
 
         ide_state = loads(open("ide_state.json", 'r').read())
+        shortcuts = loads(open("shortcuts.json", 'r').read())
+        self.setWindowTitle(ide_state.get("ide_title", "ide"))
+
+        self.python_bin = ide_state.get("python_bin_location", "/usr/bin/python3")
 
         # set global style sheet
         self.setStyleSheet(
@@ -59,16 +64,20 @@ class Application(QWidget):
         self.highlighter = syntax.PythonHighlighter(self.code_window.document())
 
         # set Ctrl-Shift-R to be the run shortcut.
-        self.run_shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_R), self)
+        self.run_shortcut = QShortcut(QKeySequence(shortcuts.get("run", "Ctrl+Shift+R")), self)
         self.run_shortcut.activated.connect(self.run_function)
 
         # set Ctrl-S to be the save shortcut.
-        self.save_shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_S), self)
+        self.save_shortcut = QShortcut(QKeySequence(shortcuts.get("save", "Ctrl+S")), self)
         self.save_shortcut.activated.connect(self.save_file)
 
         # set Ctrl-W to be the close shortcut.
-        self.close_shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_W), self)
+        self.close_shortcut = QShortcut(QKeySequence(shortcuts.get("close", "Ctrl+W")), self)
         self.close_shortcut.activated.connect(self.close_file)
+
+        # set Ctrl-Shift-L to be the close shortcut.
+        self.lint_shortcut = QShortcut(QKeySequence(shortcuts.get("lint", "Ctrl+Shift+L")), self)
+        self.lint_shortcut.activated.connect(self.perform_lint)
 
         self.hide_files_button = RotatedButton("Hide")
         self.hide_files_button: QPushButton  # gets rid of warning.
@@ -193,8 +202,20 @@ class Application(QWidget):
             file_to_run = self.current_opened_file
 
         # call subprocess
-        subprocess.call(['gnome-terminal', '--', 'python', '-i', file_to_run])
+        subprocess.call(['gnome-terminal', '--', self.python_bin, '-i', file_to_run])
         pass
+
+    def perform_lint(self):
+        if self.current_opened_file is None:
+            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
+        else:
+            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
+
+        dlg = LintDialog(self, lint_results, 'tempfile' if self.current_opened_file is None
+                         else self.current_opened_file)
+
+        dlg.exec()
+
 
     def show_hide_files_widget(self):
         if self.file_box.isHidden():
@@ -221,13 +242,11 @@ if __name__ == "__main__":
     f3 = foo(x=3)
     # print it out
     print(f3)
-
 """
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = Application()
-
     window.code_window.setPlainText(pt_default)
     # window.code_window.setPlainText(open("./application.py", 'r').read())
 

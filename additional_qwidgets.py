@@ -7,9 +7,9 @@ QLineNumberArea and QCodeEditor courtesy of @ acbetter, @ Dan-Dev, and @ Axel Sc
 Uses code from https://stackoverflow.com/questions/7339685/how-to-rotate-a-qpushbutton
 RotatedButton courtesy of @ Ulrich Dangel
 
-
-
 Code has been modified to fit specific needs / wants.
+- Allowed colors to be read in from ide_state.json for example
+- made rotated buttons not look as bloated. May be an issue on some systems but it works great for me.
 """
 
 from PyQt5.QtCore import Qt, QRect, QSize
