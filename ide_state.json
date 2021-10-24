@@ -1,0 +1,17 @@
+{
+  "project_dir": "~/PycharmProjects",
+  "default_project_dir": "~",
+
+  "editor_font_family": "PragmataPro",
+  "editor_font_size": 14,
+  "editor_font_color": "#ffffff",
+
+  "background_app_color": "#222222",
+  "background_window_color": "#222222",
+  "background_code_color": "#222244",
+
+  "foreground_window_color": "#ffffff",
+
+  "line_number_color": "#aaaaaa",
+  "line_highlight_color": "#8888aa"
+}
