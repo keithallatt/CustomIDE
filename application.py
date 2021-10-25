@@ -22,7 +22,7 @@ import sys
 import tempfile
 from json import loads
 
-from PyQt5.QtCore import Qt, QDir, QTimer
+from PyQt5.QtCore import Qt, QDir, QTimer, QModelIndex
 from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton,
                              QShortcut, QFileSystemModel, QTreeView,
@@ -74,6 +74,8 @@ class Application(QWidget):
 
         self.highlighter = syntax.PythonHighlighter(self.code_window.document())
 
+        # SHORTCUTS
+
         # set Ctrl-Shift-R to be the run shortcut.
         self.run_shortcut = QShortcut(QKeySequence(shortcuts.get("run", "Ctrl+Shift+R")), self)
         self.run_shortcut.activated.connect(self.run_function)
@@ -85,6 +87,10 @@ class Application(QWidget):
         # set Ctrl-W to be the close shortcut.
         self.close_shortcut = QShortcut(QKeySequence(shortcuts.get("close", "Ctrl+W")), self)
         self.close_shortcut.activated.connect(self.close_file)
+
+        # set Ctrl-Shift-O to be the close shortcut.
+        self.open_project_shortcut = QShortcut(QKeySequence(shortcuts.get("open_project", "Ctrl+Shift+O")), self)
+        self.open_project_shortcut.activated.connect(self.open_project)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.perform_lint)
@@ -168,11 +174,24 @@ class Application(QWidget):
         return self.code_window.getPlainText()
 
     def open_file(self, filepath: str = None):
+        # if used for shortcut
         if filepath is None:
             q_model_indices = self.tree_view.selectedIndexes()
             assert len(q_model_indices) <= 1, "Multiple selected."
             last_index = q_model_indices[-1]
 
+            file_paths = []
+
+            while last_index.data(Qt.DisplayRole) != os.sep:
+                file_paths.append(last_index.data(Qt.DisplayRole))
+                last_index = last_index.parent()
+
+            file_paths.append("")
+            filepath = os.sep.join(file_paths[::-1])
+
+        # for double click
+        if type(filepath) == QModelIndex:
+            last_index = filepath
             file_paths = []
 
             while last_index.data(Qt.DisplayRole) != os.sep:
@@ -188,7 +207,8 @@ class Application(QWidget):
         self.current_opened_file = filepath
 
     def open_project(self):
-        pass
+        print("OPEN PROJECT")
+        print(self)
 
     def save_file(self):
         if self.current_opened_file is None:

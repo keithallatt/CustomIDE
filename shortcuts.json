@@ -1,5 +1,6 @@
 {
   "run": "Ctrl+Shift+R",
   "save": "Ctrl+S",
-  "close": "Ctrl+W"
+  "close": "Ctrl+W",
+  "open_project": "Ctrl+Shift+O"
 }
