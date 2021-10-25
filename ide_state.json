@@ -19,5 +19,7 @@
   "foreground_window_color": "#ffffff",
 
   "line_number_color": "#aaaaaa",
-  "line_highlight_color": "#8888aa"
+  "line_highlight_color": "#8888aa",
+
+  "python_syntax_highlighter": "syntax_highlighter_pycharm_darcula.json"
 }

@@ -8,6 +8,7 @@ Also updated as the original looked like it did not handle things such as:
 - highlighting keyword arguments
 - highlighting the b/f/r/u string prefixes for bytes, f-strings, raw strings and unicode.
 - highlighting builtin operators such as 'str' and 'int'
+- handling todo's and todo authors.
 """
 from PyQt5 import QtCore, QtGui
 from json import loads
@@ -32,7 +33,11 @@ def format_(color, style=''):
 
 
 # syntax styles like for keywords or for operators / built-ins.
-STYLES = {k: format_(*v) for k, v in loads(open("syntax_highlighter.json", 'r').read()).items()}
+STYLES = {
+    k: format_(*v) for k, v in loads(
+        open(loads(open("ide_state.json", 'r').read())['python_syntax_highlighter'], 'r').read()
+    ).items()
+}
 
 
 class PythonHighlighter(QtGui.QSyntaxHighlighter):
@@ -130,6 +135,11 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
             # From '#' until a newline
             (r'#[^\n]*', 0, STYLES['comment']),
+
+            # handling todos
+            (r'# *todo *(\([^\n]+\))?\b[^\n]*', 0, STYLES['todo']),
+            # handling todos
+            (r'# *todo *\(([^\n]+)\)', 1, STYLES['todo_author'])
         ]
 
         # Build a QRegExp for each pattern
