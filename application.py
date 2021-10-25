@@ -12,6 +12,7 @@ TODO:
  - make file handing work with multiple files
  - check if file is saved before closing? maybe?
  - add linting to code
+ - add venv to projects if desired (could be useful, and is recommended practice)
 """
 import os
 import subprocess
@@ -19,7 +20,7 @@ import sys
 import tempfile
 from json import loads
 
-from PyQt5.QtCore import Qt, QDir
+from PyQt5.QtCore import Qt, QDir, QTimer
 from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
                              QColumnView, QFileDialog, QDialog)
@@ -40,6 +41,8 @@ class Application(QWidget):
         self.setWindowTitle(ide_state.get("ide_title", "ide"))
 
         self.python_bin = ide_state.get("python_bin_location", "/usr/bin/python3")
+
+        self.linting_results = []
 
         # set global style sheet
         self.setStyleSheet(
@@ -76,8 +79,13 @@ class Application(QWidget):
         self.close_shortcut.activated.connect(self.close_file)
 
         # set Ctrl-Shift-L to be the close shortcut.
-        self.lint_shortcut = QShortcut(QKeySequence(shortcuts.get("lint", "Ctrl+Shift+L")), self)
-        self.lint_shortcut.activated.connect(self.perform_lint)
+        # self.lint_shortcut = QShortcut(QKeySequence(shortcuts.get("lint", "Ctrl+Shift+L")), self)
+        # self.lint_shortcut.activated.connect(self.perform_lint)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.perform_lint)
+        # may need to adjust
+        self.timer.start(2000)
 
         self.hide_files_button = RotatedButton("Hide")
         self.hide_files_button: QPushButton  # gets rid of warning.
@@ -211,11 +219,13 @@ class Application(QWidget):
         else:
             lint_results = run_linter_on_code(code=self.code_window.toPlainText())
 
-        dlg = LintDialog(self, lint_results, 'tempfile' if self.current_opened_file is None
-                         else self.current_opened_file)
+        self.linting_results = lint_results
+        self.code_window.linting_results = lint_results
 
-        dlg.exec()
-
+        # dlg = LintDialog(self, lint_results, 'tempfile' if self.current_opened_file is None
+        #                  else self.current_opened_file)
+        #
+        # dlg.exec()
 
     def show_hide_files_widget(self):
         if self.file_box.isHidden():
@@ -231,17 +241,18 @@ class Application(QWidget):
         sys.exit(self.app.exec_())
 
 
-pt_default = """
-# default python script
+pt_default = """\"\"\"
+default python script
+\"\"\"
 
-def foo(x):
-    return x + 1
+
+def arbitrary_function(var):
+    \"\"\" arbitrary function \"\"\"
+    return var + (var // 2)
 
 if __name__ == "__main__":
-    # get foo of 3
-    f3 = foo(x=3)
-    # print it out
-    print(f3)
+    # get arbitrary function evaluated at 3
+    print(arbitrary_function(var=3))
 """
 
 if __name__ == '__main__':

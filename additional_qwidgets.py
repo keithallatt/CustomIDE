@@ -90,6 +90,8 @@ class QCodeEditor(QPlainTextEdit):
         self.cursorPositionChanged.connect(self.highlight_current_line)
         self.update_line_number_area_width(0)
 
+        self.linting_results = []
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Tab:
             tc = self.textCursor()
@@ -144,6 +146,12 @@ class QCodeEditor(QPlainTextEdit):
         window_color = QColor(ide_state['background_window_color'])
         line_color = QColor(ide_state['line_number_color'])
 
+        lint_colors = {
+            "error": (QColor("#800000"), 3),
+            "warning": (QColor("#808000"), 2),
+            "convention": (QColor("#006010"), 1)
+        }
+
         painter.fillRect(event.rect(), window_color)
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
@@ -155,8 +163,18 @@ class QCodeEditor(QPlainTextEdit):
         while block.isValid() and (top <= event.rect().bottom()):
             if block.isVisible() and (bottom >= event.rect().top()):
                 number = str(block_number + 1)
-                painter.setPen(line_color)
 
+                _color = window_color
+                _severity = -1
+                for result in self.linting_results:
+                    if str(result['line_number']) == number:
+                        color, severity = lint_colors.get(result['kind'], (line_color, 0))
+                        if severity > _severity:
+                            _color, _severity = color, severity
+
+                painter.fillRect(0, int(top), int(self.lineNumberArea.width()), int(height), _color)
+
+                painter.setPen(line_color)
                 painter.drawText(0, int(top), int(self.lineNumberArea.width()), int(height), Qt.AlignRight, number)
 
             block = block.next()

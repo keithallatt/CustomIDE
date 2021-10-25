@@ -64,8 +64,11 @@ class LintDialog(QDialog):
         self.buttonBox = QDialogButtonBox(q_btn)
         self.buttonBox.accepted.connect(self.accept)
 
-        current_lint_format = "\n".join([f"Line {lint_line['line_number']}: {lint_line['message']}"
-                                         for lint_line in lint_results])
+        if lint_results:
+            current_lint_format = "\n".join([f"Line {lint_line['line_number']}: {lint_line['message']}"
+                                             for lint_line in lint_results])
+        else:
+            current_lint_format = "No Issues."
 
         self.layout = QVBoxLayout()
         message = QLabel(current_lint_format)
