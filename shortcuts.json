@@ -1,6 +1,5 @@
 {
   "run": "Ctrl+Shift+R",
   "save": "Ctrl+S",
-  "close": "Ctrl+W",
-  "lint": "Ctrl+Shift+L"
+  "close": "Ctrl+W"
 }

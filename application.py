@@ -11,8 +11,10 @@ TODO:
  - additional shortcuts
  - make file handing work with multiple files
  - check if file is saved before closing? maybe?
- - add linting to code
  - add venv to projects if desired (could be useful, and is recommended practice)
+
+TO DEBUG:
+ - add linting to code
 """
 import os
 import subprocess
@@ -22,7 +24,8 @@ from json import loads
 
 from PyQt5.QtCore import Qt, QDir, QTimer
 from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
-from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
+from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton,
+                             QShortcut, QFileSystemModel, QTreeView,
                              QColumnView, QFileDialog)
 
 import syntax
@@ -83,14 +86,10 @@ class Application(QWidget):
         self.close_shortcut = QShortcut(QKeySequence(shortcuts.get("close", "Ctrl+W")), self)
         self.close_shortcut.activated.connect(self.close_file)
 
-        # set Ctrl-Shift-L to be the close shortcut.
-        # self.lint_shortcut = QShortcut(QKeySequence(shortcuts.get("lint", "Ctrl+Shift+L")), self)
-        # self.lint_shortcut.activated.connect(self.perform_lint)
-
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.perform_lint)
         # may need to adjust
-        self.timer.start(2000)
+        # self.timer.start(2000)
 
         self.hide_files_button = RotatedButton("Hide")
         self.hide_files_button: QPushButton  # gets rid of warning.
@@ -151,25 +150,37 @@ class Application(QWidget):
         self.grid_layout = layout
         self.setLayout(layout)
 
+        # open up current opened files. (one until further notice)
+        current_files = ide_state['current_opened_files']
+        files = [
+            os.sep.join([*self.current_project_root, current_file]) for current_file in current_files
+        ]
+        if files:
+            self.open_file(files[0])
+
+        # right at the end, grab focus to the code editor
+        self.code_window.setFocus()
+
     def _load_code(self, text):
         self.code_window.setPlainText(text)
 
     def _get_code(self):
         return self.code_window.getPlainText()
 
-    def open_file(self):
-        q_model_indices = self.tree_view.selectedIndexes()
-        # assert len(q_model_indices) == 1, "Multiple selected."
-        last_index = q_model_indices[-1]
+    def open_file(self, filepath: str = None):
+        if filepath is None:
+            q_model_indices = self.tree_view.selectedIndexes()
+            assert len(q_model_indices) <= 1, "Multiple selected."
+            last_index = q_model_indices[-1]
 
-        file_paths = []
+            file_paths = []
 
-        while last_index.data(Qt.DisplayRole) != os.sep:
-            file_paths.append(last_index.data(Qt.DisplayRole))
-            last_index = last_index.parent()
+            while last_index.data(Qt.DisplayRole) != os.sep:
+                file_paths.append(last_index.data(Qt.DisplayRole))
+                last_index = last_index.parent()
 
-        file_paths.append("")
-        filepath = os.sep.join(file_paths[::-1])
+            file_paths.append("")
+            filepath = os.sep.join(file_paths[::-1])
 
         if os.path.isfile(filepath):
             self.code_window.setPlainText(open(filepath, 'r').read())
@@ -193,7 +204,7 @@ class Application(QWidget):
                 self.current_opened_file = filename
             else:
                 return
-
+        self.perform_lint()
         open(self.current_opened_file, 'w').write(self.code_window.toPlainText())
 
     def close_file(self):
@@ -243,7 +254,9 @@ class Application(QWidget):
             self.hide_files_button.setText("Show")
 
     def __call__(self):
-        sys.exit(self.app.exec_())
+        exit_code = self.app.exec_()
+
+        sys.exit(exit_code)
 
 
 pt_default = """\"\"\"
@@ -263,8 +276,6 @@ if __name__ == "__main__":
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = Application()
-    window.code_window.setPlainText(pt_default)
-    # window.code_window.setPlainText(open("./application.py", 'r').read())
 
     window.show()
 
