@@ -9,7 +9,7 @@ This program is only designed to work on Ubuntu 20.04, as this is a personal pro
 
 TODO:
  - additional shortcuts
- - make file handing work with multiple files
+ - make file handing work with multiple files (change newfile to be like pycharm, where no unnamed files exist)
  - check if file is saved before closing? maybe?
  - add venv to projects if desired (could be useful, and is recommended practice)
 
