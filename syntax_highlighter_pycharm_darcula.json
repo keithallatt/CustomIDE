@@ -10,5 +10,7 @@
     "self": ["#94558d"],
     "numbers": ["#6897bb"],
     "dunder": ["#b200b2"],
-    "kwargs": ["#aa4926"]
+    "kwargs": ["#aa4926"],
+    "todo": ["#bbb529", "italic"],
+    "todo_author": ["#bbbb99", "bold italic"]
 }
