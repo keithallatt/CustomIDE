@@ -23,11 +23,11 @@ from json import loads
 from PyQt5.QtCore import Qt, QDir, QTimer
 from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
-                             QColumnView, QFileDialog, QDialog)
+                             QColumnView, QFileDialog)
 
 import syntax
 from additional_qwidgets import QCodeEditor, RotatedButton
-from linting import run_linter_on_code, LintDialog
+from linting import run_linter_on_code
 
 
 class Application(QWidget):
@@ -47,6 +47,11 @@ class Application(QWidget):
         # set global style sheet
         self.setStyleSheet(
             "QWidget {"
+            f"  background-color: {ide_state['background_window_color']};"
+            f"  color: {ide_state['foreground_window_color']};"
+            "}"
+            ""
+            "QToolTip {"
             f"  background-color: {ide_state['background_window_color']};"
             f"  color: {ide_state['foreground_window_color']};"
             "}"

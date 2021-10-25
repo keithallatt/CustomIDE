@@ -12,11 +12,11 @@ Code has been modified to fit specific needs / wants.
 - made rotated buttons not look as bloated. May be an issue on some systems but it works great for me.
 """
 
-from PyQt5.QtCore import Qt, QRect, QSize
-from PyQt5.QtGui import QColor, QPainter, QTextFormat
+from PyQt5.QtCore import Qt, QRect, QSize, QEvent
+from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
-                             QStyleOptionButton)
+                             QStyleOptionButton, QScrollBar)
 from json import loads
 
 
@@ -73,12 +73,27 @@ class QLineNumberArea(QWidget):
     def __init__(self, editor):
         super().__init__(editor)
         self.codeEditor = editor
+        self.setToolTip("tooltip")
+        self.setMouseTracking(True)
+        self.hovering = False
 
     def sizeHint(self):
         return QSize(self.editor.line_number_area_width(), 0)
 
     def paintEvent(self, event):
         self.codeEditor.line_number_area_paint_event(event)
+
+    def enterEvent(self, event):
+        self.hovering = True
+
+    def leaveEvent(self, event):
+        self.hovering = False
+
+    def mouseMoveEvent(self, a0: QMouseEvent):
+        if self.hovering:
+            y = a0.y()
+            hovering_on = y // self.codeEditor.font_height + self.codeEditor.verticalScrollBar().value() + 1
+            self.setToolTip(self.codeEditor.line_number_area_linting_tooltips.get(hovering_on, ''))
 
 
 class QCodeEditor(QPlainTextEdit):
@@ -91,6 +106,9 @@ class QCodeEditor(QPlainTextEdit):
         self.update_line_number_area_width(0)
 
         self.linting_results = []
+        self.line_number_area_linting_tooltips = {}
+
+        self.font_height = 10  # approximate until starts drawwing
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Tab:
@@ -160,6 +178,7 @@ class QCodeEditor(QPlainTextEdit):
 
         # Just to make sure I use the right font
         height = int(self.fontMetrics().height())
+        self.font_height = height
         while block.isValid() and (top <= event.rect().bottom()):
             if block.isVisible() and (bottom >= event.rect().top()):
                 number = str(block_number + 1)
@@ -171,6 +190,7 @@ class QCodeEditor(QPlainTextEdit):
                         color, severity = lint_colors.get(result['kind'], (line_color, 0))
                         if severity > _severity:
                             _color, _severity = color, severity
+                            self.line_number_area_linting_tooltips.update({int(number): result['message']})
 
                 painter.fillRect(0, int(top), int(self.lineNumberArea.width()), int(height), _color)
 

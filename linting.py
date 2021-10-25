@@ -26,7 +26,7 @@ def run_linter_on_code(code: str = None, filename: str = None):
 
     (pylint_stdout, pylint_stderr) = lint.py_run(filename, return_std=True)
 
-    # get warnings from pylint object
+    # get warnings from pylint object_
     all_results = []
 
     for line in pylint_stdout.read().split("\n"):
