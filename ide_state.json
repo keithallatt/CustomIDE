@@ -4,8 +4,8 @@
   "default_project_dir": "~",
   "current_opened_files": [
     "second_file.py",
-    "main.py",
-    "third_file.py"
+    "third_file.py",
+    "main.py"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
@@ -18,5 +18,6 @@
   "line_highlight_color": "#8888aa",
   "python_syntax_highlighter": "syntax_highlighter_pycharm_darcula.json",
   "save_on_close_automatically": false,
-  "selected_tab": 1
+  "selected_tab": 1,
+  "save_on_run": false
 }

@@ -309,9 +309,14 @@ class QCodeFileTabs(QTabWidget):
         self.application = parent
 
         self.last_tab_index = None
+        self._last_file_selected = None
 
         # connect function to signal made by tab clicking.
         self.currentChanged.connect(self.file_selected_by_index)
+
+    @property
+    def current_file_selected(self):
+        return self._last_file_selected
 
     def open_tab(self, name):
         if name in self.tabs.keys():
@@ -325,6 +330,16 @@ class QCodeFileTabs(QTabWidget):
             tab_index = self.indexOf(tab)
 
         self.setCurrentIndex(tab_index)
+
+    def save_to_temp(self):
+        tab_to_save = self.tabText(self.currentIndex())
+        if tab_to_save not in self.temp_files.keys():
+            self.temp_files.update({tab_to_save: tempfile.mkstemp()[1]})
+
+        temp_to_save_to = self.temp_files[tab_to_save]
+        code_to_save = self.application.code_window.toPlainText()
+        open(temp_to_save_to, 'w').write(code_to_save)
+        return temp_to_save_to
 
     def close_tab(self):
         index = self.currentIndex()
@@ -361,3 +376,4 @@ class QCodeFileTabs(QTabWidget):
         self.application.code_window.setPlainText(open(next_temp_file, 'r').read())
 
         self.last_tab_index = index
+        self._last_file_selected = next_tab

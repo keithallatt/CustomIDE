@@ -9,13 +9,13 @@ This program is only designed to work on Ubuntu 20.04, as this is a personal pro
 
 TODO:
  - additional shortcuts
- - make file handing work with multiple files (change new file to be like pycharm, where no unnamed files exist)
  - check if file is saved before closing? maybe?
  - add venv to projects if desired (could be useful, and is recommended practice)
  - select file to be the designated run file
 
 TO DEBUG:
  - add linting to code
+ - tab /shift-tab behaviour
 """
 import os
 import subprocess
@@ -39,24 +39,24 @@ class Application(QWidget):
         self.resize(2200, 1800)
         self.move(200, 100)
 
-        ide_state = loads(open("ide_state.json", 'r').read())
+        self.ide_state = loads(open("ide_state.json", 'r').read())
         shortcuts = loads(open("shortcuts.json", 'r').read())
-        self.setWindowTitle(ide_state.get("ide_title", "ide"))
+        self.setWindowTitle(self.ide_state.get("ide_title", "ide"))
 
-        self.python_bin = ide_state.get("python_bin_location", "/usr/bin/python3")
+        self.python_bin = self.ide_state.get("python_bin_location", "/usr/bin/python3")
 
         self.linting_results = []
 
         # set global style sheet
         self.setStyleSheet(
             "QWidget {"
-            f"  background-color: {ide_state['background_window_color']};"
-            f"  color: {ide_state['foreground_window_color']};"
+            f"  background-color: {self.ide_state['background_window_color']};"
+            f"  color: {self.ide_state['foreground_window_color']};"
             "}"
             ""
             "QToolTip {"
-            f"  background-color: {ide_state['background_window_color']};"
-            f"  color: {ide_state['foreground_window_color']};"
+            f"  background-color: {self.ide_state['background_window_color']};"
+            f"  color: {self.ide_state['foreground_window_color']};"
             "}"
         )
 
@@ -69,8 +69,8 @@ class Application(QWidget):
         self.code_window = QCodeEditor()  # QPlainTextEdit with Line Numbers and highlighting.
         self.code_window.installEventFilter(self)
 
-        font_name = ide_state.get('editor_font_family', "Courier New")
-        font_size = ide_state.get('editor_font_size', 12)
+        font_name = self.ide_state.get('editor_font_family', "Courier New")
+        font_size = self.ide_state.get('editor_font_size', 12)
 
         backup_font = QFont("Courier New", 12)
         q = QFont(font_name, font_size)
@@ -124,11 +124,11 @@ class Application(QWidget):
         # Set the model of the view.
         view.setModel(self.model)
         # Set the root index of the view as the user's home directory.
-        proj_dir = ide_state['project_dir']
+        proj_dir = self.ide_state['project_dir']
         proj_dir = os.path.expanduser(proj_dir)
 
         if not os.path.exists(proj_dir):
-            proj_dir = ide_state['default_project_dir']
+            proj_dir = self.ide_state['default_project_dir']
             proj_dir = os.path.expanduser(proj_dir)
 
         assert os.path.exists(proj_dir), "Default Project Folder does not exist."
@@ -167,23 +167,24 @@ class Application(QWidget):
         self.setLayout(layout)
 
         # open up current opened files. (one until further notice)
-        current_files = ide_state['current_opened_files']
+        current_files = self.ide_state['current_opened_files']
         files = [
             os.sep.join([self.current_project_root_str, current_file]) for current_file in current_files
         ]
         for f in files:
             self.open_file(f)
 
-        self.file_tabs.setCurrentIndex(ide_state['selected_tab'])
+        self.file_tabs.setCurrentIndex(self.ide_state['selected_tab'])
 
         # right at the end, grab focus to the code editor
         self.code_window.setFocus()
 
-    def focusNextPrevChild(self, next: bool) -> bool:
+    def focusNextPrevChild(self, _: bool) -> bool:
         # should prevent focus switching
+        # parameter 'next' renamed to '_' as 'next' shadows a builtin.
         return False
 
-    def eventFilter(self, qobject, event):
+    def eventFilter(self, q_object, event):
         if event.type() == QEvent.KeyPress:
             if event.key() == Qt.Key_Tab and event.modifiers() == Qt.ControlModifier:
                 # for tab / ctrl tab
@@ -195,7 +196,7 @@ class Application(QWidget):
                 self.file_tabs.previous_tab()
                 return True
 
-        return QWidget.eventFilter(self, qobject, event)
+        return QWidget.eventFilter(self, q_object, event)
 
     def _load_code(self, text):
         self.code_window.setPlainText(text)
@@ -248,8 +249,9 @@ class Application(QWidget):
         if not self.current_opened_files:
             return
 
-        self.perform_lint()
-        open(self.current_opened_file, 'w').write(self.code_window.toPlainText())
+        file_path_to_save = self.current_project_root_str, self.file_tabs.current_file_selected
+        file_path_to_save = os.sep.join(file_path_to_save)
+        open(file_path_to_save, 'w').write(self.code_window.toPlainText())
 
     def close_file(self):
         next_selected, old_name = self.file_tabs.close_tab()
@@ -287,22 +289,23 @@ class Application(QWidget):
             return
 
     def run_function(self):
-        # todo: fix this to run currently opened file.
-        # save file
-        print("run")
-        return
-        #
-        # if self.current_opened_files is None:
-        #     # need to create file:
-        #     temporary = tempfile.mkstemp(suffix='.py', text=True)[1]
-        #     open(temporary, 'w').write(self.code_window.toPlainText())
-        #     file_to_run = temporary
-        # else:
-        #     pass
-        #
-        # # call subprocess
-        # subprocess.call(['gnome-terminal', '--', self.python_bin, '-i', file_to_run])
-        # pass
+        if not self.current_opened_files:
+            return
+
+        file_path_to_run = self.current_project_root_str, self.file_tabs.current_file_selected
+        file_path_to_run = os.sep.join(file_path_to_run)
+
+        contents_in_file = open(file_path_to_run, 'r').read()
+
+        if contents_in_file != self.code_window.toPlainText():
+            save_on_run = self.ide_state.get('save_on_run', False)
+
+            if save_on_run:
+                self.save_file()
+            else:
+                file_path_to_run = self.file_tabs.save_to_temp()
+
+        subprocess.call(['gnome-terminal', '--', self.python_bin, '-i', file_path_to_run])
 
     def perform_lint(self):
         if self.current_opened_file is None:
@@ -332,15 +335,13 @@ class Application(QWidget):
             file_header = file[current_root_len:]
             files_to_reopen.append(file_header)
 
-        sort_key = lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name])
-        files_to_reopen.sort(key=sort_key)
+        files_to_reopen.sort(key=lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name]))
 
-        ide_state = loads(open("ide_state.json", 'r').read())
-        ide_state['current_opened_files'] = files_to_reopen
-        ide_state['project_dir'] = self.current_project_root_str
-        ide_state['selected_tab'] = self.file_tabs.currentIndex()
+        self.ide_state['current_opened_files'] = files_to_reopen
+        self.ide_state['project_dir'] = self.current_project_root_str
+        self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
 
-        open("ide_state.json", 'w').write(dumps(ide_state, indent=2))
+        open("ide_state.json", 'w').write(dumps(self.ide_state, indent=2))
 
 
 if __name__ == '__main__':
