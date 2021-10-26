@@ -9,7 +9,7 @@ This program is only designed to work on Ubuntu 20.04, as this is a personal pro
 
 TODO:
  - additional shortcuts
- - check if file is saved before closing? maybe?
+ - check if file is saved before closing? maybe?  !!!
  - add venv to projects if desired (could be useful, and is recommended practice)
  - select file to be the designated run file
 
@@ -58,6 +58,8 @@ class Application(QWidget):
             f"  background-color: {self.ide_state['background_window_color']};"
             f"  color: {self.ide_state['foreground_window_color']};"
             "}"
+            "QTabBar::close-button { image: url(app_assets/close.png); }  "
+            "QTabBar::close-button:hover { image: url(app_assets/close-hover.png); }"
         )
 
         self.current_opened_files = set()
@@ -166,6 +168,12 @@ class Application(QWidget):
         self.grid_layout = layout
         self.setLayout(layout)
 
+        # put default before opening files
+        self.code_window.setPlainText("""\n\n\n
+                    No files are currently opened.
+                    Double-click on a file to start editing.\n\n\n\n""")
+        self.code_window.setEnabled(False)
+
         # open up current opened files. (one until further notice)
         current_files = self.ide_state['current_opened_files']
         files = [
@@ -255,10 +263,8 @@ class Application(QWidget):
 
     def close_file(self):
         next_selected, old_name = self.file_tabs.close_tab()
-        filepath = os.sep.join([self.current_project_root_str, old_name])
-        self.current_opened_files.remove(filepath)
 
-        if next_selected == -1:
+        if next_selected == -1 or not self.current_opened_files:
             self.code_window.setPlainText("""\n\n\n
             No files are currently opened.
             Double-click on a file to start editing.\n\n\n\n""")

@@ -308,11 +308,20 @@ class QCodeFileTabs(QTabWidget):
         self.temp_files = {}
         self.application = parent
 
+        # which was the last tab swapped to
         self.last_tab_index = None
         self._last_file_selected = None
 
+        # allow tabs to be rearranged.
+        self.setMovable(True)
+
         # connect function to signal made by tab clicking.
         self.currentChanged.connect(self.file_selected_by_index)
+        # connect function to signal made by tab rearranging
+        self.tabBar().tabMoved.connect(self.tabs_rearranged)
+
+        self.setTabsClosable(True)
+        self.tabCloseRequested.connect(self.close_tab)
 
     @property
     def current_file_selected(self):
@@ -329,6 +338,10 @@ class QCodeFileTabs(QTabWidget):
             self.addTab(tab, name)
             tab_index = self.indexOf(tab)
 
+            self.style().styleHint(
+                QStyle.SH_TabBar_CloseButtonPosition, None, self.tabBar()
+            )
+
         self.setCurrentIndex(tab_index)
 
     def save_to_temp(self):
@@ -341,11 +354,17 @@ class QCodeFileTabs(QTabWidget):
         open(temp_to_save_to, 'w').write(code_to_save)
         return temp_to_save_to
 
-    def close_tab(self):
-        index = self.currentIndex()
+    def close_tab(self, index: int = None):
+        if index is None:
+            index = self.currentIndex()
         name = self.tabText(index)
         self.tabs.pop(name)
         self.removeTab(index)
+
+        # moved here so closing tab whether from button or shortcut still removes files.
+        filepath = os.sep.join([self.application.current_project_root_str, name])
+        self.application.current_opened_files.remove(filepath)
+
         return self.currentIndex(), name
 
     def next_tab(self):
@@ -355,6 +374,9 @@ class QCodeFileTabs(QTabWidget):
     def previous_tab(self):
         next_index = (self.currentIndex() - 1) % self.count()
         self.setCurrentIndex(next_index)
+
+    def tabs_rearranged(self):
+        self.last_tab_index = self.indexOf(self.tabs[self._last_file_selected])
 
     def file_selected_by_index(self, index: int) -> None:
         if self.last_tab_index is not None:
