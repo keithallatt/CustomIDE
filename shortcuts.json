@@ -1,6 +1,7 @@
 {
   "run": "Ctrl+Shift+R",
   "save": "Ctrl+S",
+  "new": "Ctrl+N",
   "close": "Ctrl+W",
   "open_project": "Ctrl+Shift+O"
 }

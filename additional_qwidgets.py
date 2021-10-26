@@ -11,13 +11,16 @@ Code has been modified to fit specific needs / wants.
 - Allowed colors to be read in from ide_state.json for example
 - made rotated buttons not look as bloated. May be an issue on some systems but it works great for me.
 """
+import re
+import tempfile
+import os
+from json import loads
 
-from PyQt5.QtCore import Qt, QRect, QSize, QEvent
-from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent
+from PyQt5.QtCore import Qt, QRect, QSize
+from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
-                             QStyleOptionButton, QScrollBar)
-from json import loads
+                             QStyleOptionButton, QTabWidget)
 
 
 class RotatedButton(QPushButton):
@@ -108,13 +111,108 @@ class QCodeEditor(QPlainTextEdit):
         self.linting_results = []
         self.line_number_area_linting_tooltips = {}
 
-        self.font_height = 10  # approximate until starts drawwing
+        self.font_height = 10  # approximate until starts drawing
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Tab:
-            tc = self.textCursor()
-            tc.insertText("    ")
+        tc = self.textCursor()
+
+        if event.key() == Qt.Key_Tab :
+            if tc.selectionStart() == tc.selectionEnd():
+                tc.insertText(" " * (4 - (tc.positionInBlock() % 4)))
+            else:
+                tc.beginEditBlock()
+                sel_start, sel_end = tc.selectionStart(), tc.selectionEnd()
+
+                tc.setPosition(sel_start)
+                sel_start = tc.position() - tc.positionInBlock()
+
+                tc.setPosition(sel_end)
+                sel_end = tc.position() - tc.positionInBlock()
+
+                original_start = sel_start
+                position_after = sel_end
+
+                while sel_end != sel_start:
+                    tc.setPosition(sel_end)
+                    tc.insertText("    ")
+                    tc.setPosition(sel_end - 1)
+                    position_after += 4
+                    sel_end = tc.position() - tc.positionInBlock()
+                tc.setPosition(sel_end)
+                tc.insertText("    ")
+
+                tc.setPosition(original_start)
+                tc.setPosition(position_after, QTextCursor.KeepAnchor)
+
+                last_line_len = len(self.toPlainText().split("\n")[tc.blockNumber()])
+                tc.setPosition(tc.position() + last_line_len, QTextCursor.KeepAnchor)
+
+                tc.endEditBlock()
+
+                self.setTextCursor(tc)
             return
+        if event.key() == Qt.Key_Backtab:
+            if tc.selectionStart() == tc.selectionEnd():
+                line_number = tc.blockNumber()
+                line = self.toPlainText().split("\n")[line_number]
+
+                m = re.match(r"^(\s*)", line)
+                num_removing = min(m.end(), 4)
+                if num_removing:
+                    tc.beginEditBlock()
+                    new_position = tc.position() - num_removing
+                    sel_start = tc.position() - tc.positionInBlock()
+                    tc.setPosition(sel_start)
+                    for i in range(num_removing):
+                        tc.deleteChar()
+                    tc.setPosition(new_position)
+                    tc.endEditBlock()
+                    self.setTextCursor(tc)
+            else:
+                tc.beginEditBlock()
+                sel_start, sel_end = tc.selectionStart(), tc.selectionEnd()
+
+                tc.setPosition(sel_start)
+                sel_start = tc.position() - tc.positionInBlock()
+
+                tc.setPosition(sel_end)
+                sel_end = tc.position() - tc.positionInBlock()
+
+                original_start = sel_start
+                position_after = sel_end + len(self.toPlainText().split("\n")[tc.blockNumber()])
+
+                while sel_end >= sel_start:
+                    tc.setPosition(sel_end)
+                    line_number = tc.blockNumber()
+                    line = self.toPlainText().split("\n")[line_number]
+
+                    m = re.match(r"^(\s*)", line)
+                    num_removing = min(m.end(), 4)
+
+                    if num_removing:
+                        line_start = tc.position() - tc.positionInBlock()
+                        tc.setPosition(line_start)
+                        for i in range(num_removing):
+                            tc.deleteChar()
+
+                    if sel_end == 0:
+                        break
+
+                    position_after -= num_removing
+                    tc.setPosition(sel_end - 1)
+                    sel_end = tc.position() - tc.positionInBlock()
+
+                tc.setPosition(sel_end)
+
+                if original_start < 0:
+                    original_start = 0
+
+                tc.setPosition(original_start)
+                tc.setPosition(position_after, QTextCursor.KeepAnchor)
+                tc.endEditBlock()
+
+                self.setTextCursor(tc)
+
         return QPlainTextEdit.keyPressEvent(self, event)
 
     def line_number_area_width(self):
@@ -201,3 +299,65 @@ class QCodeEditor(QPlainTextEdit):
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
             block_number += 1
+
+
+class QCodeFileTabs(QTabWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.tabs = {}
+        self.temp_files = {}
+        self.application = parent
+
+        self.last_tab_index = None
+
+        # connect function to signal made by tab clicking.
+        self.currentChanged.connect(self.file_selected_by_index)
+
+    def open_tab(self, name):
+        if name in self.tabs.keys():
+            # select tab
+            tab = self.tabs[name]
+            tab_index = self.indexOf(tab)
+        else:
+            tab = QWidget()
+            self.tabs.update({name: tab})
+            self.addTab(tab, name)
+            tab_index = self.indexOf(tab)
+
+        self.setCurrentIndex(tab_index)
+
+    def close_tab(self):
+        index = self.currentIndex()
+        name = self.tabText(index)
+        self.tabs.pop(name)
+        self.removeTab(index)
+        return self.currentIndex(), name
+
+    def next_tab(self):
+        next_index = (self.currentIndex() + 1) % self.count()
+        self.setCurrentIndex(next_index)
+
+    def previous_tab(self):
+        next_index = (self.currentIndex() - 1) % self.count()
+        self.setCurrentIndex(next_index)
+
+    def file_selected_by_index(self, index: int) -> None:
+        if self.last_tab_index is not None:
+            last_tab = self.tabText(self.last_tab_index)
+
+            if last_tab not in self.temp_files.keys():
+                # keep until program quits.
+                self.temp_files.update({last_tab: tempfile.mkstemp()[1]})
+
+            last_temp_file = self.temp_files[last_tab]
+            code_to_save = self.application.code_window.toPlainText()
+
+            open(last_temp_file, 'w').write(code_to_save)
+
+        next_tab = self.tabText(index)
+        next_temp_file = self.temp_files.get(next_tab,
+                                             self.application.current_project_root_str + os.sep + next_tab)
+
+        self.application.code_window.setPlainText(open(next_temp_file, 'r').read())
+
+        self.last_tab_index = index

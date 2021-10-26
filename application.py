@@ -9,9 +9,10 @@ This program is only designed to work on Ubuntu 20.04, as this is a personal pro
 
 TODO:
  - additional shortcuts
- - make file handing work with multiple files (change newfile to be like pycharm, where no unnamed files exist)
+ - make file handing work with multiple files (change new file to be like pycharm, where no unnamed files exist)
  - check if file is saved before closing? maybe?
  - add venv to projects if desired (could be useful, and is recommended practice)
+ - select file to be the designated run file
 
 TO DEBUG:
  - add linting to code
@@ -20,16 +21,15 @@ import os
 import subprocess
 import sys
 import tempfile
-from json import loads
+from json import loads, dumps
 
-from PyQt5.QtCore import Qt, QDir, QTimer, QModelIndex
-from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
-from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton,
-                             QShortcut, QFileSystemModel, QTreeView,
+from PyQt5.QtCore import Qt, QDir, QTimer, QModelIndex, QEvent
+from PyQt5.QtGui import QFont, QKeySequence, QFontInfo, QKeyEvent
+from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
                              QColumnView, QFileDialog)
 
 import syntax
-from additional_qwidgets import QCodeEditor, RotatedButton
+from additional_qwidgets import QCodeEditor, RotatedButton, QCodeFileTabs
 from linting import run_linter_on_code
 
 
@@ -60,9 +60,14 @@ class Application(QWidget):
             "}"
         )
 
-        self.current_opened_file = None
+        self.current_opened_files = set()
+
+        # need file tabs.
+        self.file_tabs = QCodeFileTabs(self)
+
         # background dealt with in QCodeEditor class
         self.code_window = QCodeEditor()  # QPlainTextEdit with Line Numbers and highlighting.
+        self.code_window.installEventFilter(self)
 
         font_name = ide_state.get('editor_font_family', "Courier New")
         font_size = ide_state.get('editor_font_size', 12)
@@ -71,7 +76,6 @@ class Application(QWidget):
         q = QFont(font_name, font_size)
         qfi = QFontInfo(q)
         self.code_window.setFont(q if font_name == qfi.family() else backup_font)
-
         self.highlighter = syntax.PythonHighlighter(self.code_window.document())
 
         # SHORTCUTS
@@ -79,6 +83,10 @@ class Application(QWidget):
         # set Ctrl-Shift-R to be the run shortcut.
         self.run_shortcut = QShortcut(QKeySequence(shortcuts.get("run", "Ctrl+Shift+R")), self)
         self.run_shortcut.activated.connect(self.run_function)
+
+        # set Ctrl-N to be the new file shortcut.
+        self.new_file_shortcut = QShortcut(QKeySequence(shortcuts.get("new", "Ctrl+N")), self)
+        self.new_file_shortcut.activated.connect(self.new_file)
 
         # set Ctrl-S to be the save shortcut.
         self.save_shortcut = QShortcut(QKeySequence(shortcuts.get("save", "Ctrl+S")), self)
@@ -92,10 +100,9 @@ class Application(QWidget):
         self.open_project_shortcut = QShortcut(QKeySequence(shortcuts.get("open_project", "Ctrl+Shift+O")), self)
         self.open_project_shortcut.activated.connect(self.open_project)
 
+        # not currently using, but would like to do something like this in the future
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.perform_lint)
-        # may need to adjust
-        # self.timer.start(2000)
 
         self.hide_files_button = RotatedButton("Hide")
         self.hide_files_button: QPushButton  # gets rid of warning.
@@ -128,6 +135,7 @@ class Application(QWidget):
 
         view.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
         self.current_project_root = proj_dir.split(os.sep)
+        self.current_project_root_str = proj_dir
 
         self.tree.setViewport(view)
         self.tree.setAnimated(False)
@@ -143,15 +151,17 @@ class Application(QWidget):
         self.file_box.setLayout(file_box_layout)
 
         layout = QGridLayout()
-        layout.addWidget(self.button_widget, 0, 0, 1, 1)
-        layout.addWidget(self.file_box, 0, 1, 1, 1)
-        layout.addWidget(self.code_window, 0, 2, 1, 1)
+        layout.addWidget(self.button_widget, 0, 0, 2, 1)
+        layout.addWidget(self.file_box, 0, 1, 2, 1)
+        layout.addWidget(self.file_tabs, 0, 2, 1, 1)
+        layout.addWidget(self.code_window, 1, 2, 1, 1)
 
         self.file_window_show_column_info = 1, 2
 
         layout.setColumnStretch(0, 0)  # make button widget small
         layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
         layout.setColumnStretch(2, 5)  # make code window larger
+        layout.setRowStretch(1, 1)
 
         self.grid_layout = layout
         self.setLayout(layout)
@@ -159,13 +169,33 @@ class Application(QWidget):
         # open up current opened files. (one until further notice)
         current_files = ide_state['current_opened_files']
         files = [
-            os.sep.join([*self.current_project_root, current_file]) for current_file in current_files
+            os.sep.join([self.current_project_root_str, current_file]) for current_file in current_files
         ]
-        if files:
-            self.open_file(files[0])
+        for f in files:
+            self.open_file(f)
+
+        self.file_tabs.setCurrentIndex(ide_state['selected_tab'])
 
         # right at the end, grab focus to the code editor
         self.code_window.setFocus()
+
+    def focusNextPrevChild(self, next: bool) -> bool:
+        # should prevent focus switching
+        return False
+
+    def eventFilter(self, qobject, event):
+        if event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Tab and event.modifiers() == Qt.ControlModifier:
+                # for tab / ctrl tab
+                self.file_tabs.next_tab()
+                return True
+
+            if event.key() == Qt.Key_Backtab and event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
+                # for ctrl shift tab
+                self.file_tabs.previous_tab()
+                return True
+
+        return QWidget.eventFilter(self, qobject, event)
 
     def _load_code(self, text):
         self.code_window.setPlainText(text)
@@ -201,53 +231,78 @@ class Application(QWidget):
             file_paths.append("")
             filepath = os.sep.join(file_paths[::-1])
 
-        if os.path.isfile(filepath):
-            self.code_window.setPlainText(open(filepath, 'r').read())
+        root_full = os.sep.join(self.current_project_root)
+        assert filepath.startswith(root_full), "Opening non-project file."
 
-        self.current_opened_file = filepath
+        filename = filepath[len(root_full)+1:]
+
+        self.file_tabs.open_tab(filename)
+        self.current_opened_files.add(filepath)
+        self.code_window.setEnabled(True)
 
     def open_project(self):
         print("OPEN PROJECT")
         print(self)
 
     def save_file(self):
-        if self.current_opened_file is None:
-            # make new file:
-            dial = QFileDialog()
-            dial.setDirectory(os.sep.join(self.current_project_root))
-            dial.setDefaultSuffix("*.py")
-            filename, _ = dial.getSaveFileName(self, "Save file", "",
-                                               "Python Files (*.py)", options=QFileDialog.DontUseNativeDialog)
+        if not self.current_opened_files:
+            return
 
-            if filename:
-                # actually write to the file.
-                self.current_opened_file = filename
-            else:
-                return
         self.perform_lint()
         open(self.current_opened_file, 'w').write(self.code_window.toPlainText())
 
     def close_file(self):
-        self.current_opened_file = None
-        self.code_window.setPlainText("")
+        next_selected, old_name = self.file_tabs.close_tab()
+        filepath = os.sep.join([self.current_project_root_str, old_name])
+        self.current_opened_files.remove(filepath)
+
+        if next_selected == -1:
+            self.code_window.setPlainText("""\n\n\n
+            No files are currently opened.
+            Double-click on a file to start editing.\n\n\n\n""")
+            self.code_window.setEnabled(False)
 
     def new_file(self):
-        pass
+        # make new file:
+        options_ = QFileDialog.Options()
+        options_ |= QFileDialog.DontUseNativeDialog
+        options_ |= QFileDialog.ShowDirsOnly
+        dial = QFileDialog()
+        dial.setDirectory(self.current_project_root_str)
+        dial.setDefaultSuffix("*.py")
+        filename, _ = dial.getSaveFileName(self, "Save file", "",
+                                           "Python Files (*.py)", options=options_)
+        if filename:
+            filename: str
+            last_part = filename.split(os.sep)[-1]
+            if '.' in last_part:
+                # ensure extension is '.py' so all files are python files.
+                pass
+            else:
+                filename += ".py"
+            # actually write to the file.
+            open(filename, 'a').close()
+            self.open_file(filename)
+        else:
+            return
 
     def run_function(self):
+        # todo: fix this to run currently opened file.
         # save file
-        if self.current_opened_file is None:
-            # need to create file:
-            temporary = tempfile.mktemp(suffix='.py')
-            open(temporary, 'w').write(self.code_window.toPlainText())
-            file_to_run = temporary
-        else:
-            self.save_file()
-            file_to_run = self.current_opened_file
-
-        # call subprocess
-        subprocess.call(['gnome-terminal', '--', self.python_bin, '-i', file_to_run])
-        pass
+        print("run")
+        return
+        #
+        # if self.current_opened_files is None:
+        #     # need to create file:
+        #     temporary = tempfile.mkstemp(suffix='.py', text=True)[1]
+        #     open(temporary, 'w').write(self.code_window.toPlainText())
+        #     file_to_run = temporary
+        # else:
+        #     pass
+        #
+        # # call subprocess
+        # subprocess.call(['gnome-terminal', '--', self.python_bin, '-i', file_to_run])
+        # pass
 
     def perform_lint(self):
         if self.current_opened_file is None:
@@ -257,11 +312,6 @@ class Application(QWidget):
 
         self.linting_results = lint_results
         self.code_window.linting_results = lint_results
-
-        # dlg = LintDialog(self, lint_results, 'tempfile' if self.current_opened_file is None
-        #                  else self.current_opened_file)
-        #
-        # dlg.exec()
 
     def show_hide_files_widget(self):
         if self.file_box.isHidden():
@@ -273,30 +323,30 @@ class Application(QWidget):
             self.grid_layout.setColumnStretch(self.file_window_show_column_info[0], 0)
             self.hide_files_button.setText("Show")
 
-    def __call__(self):
-        exit_code = self.app.exec_()
+    def before_close(self):
+        files_to_reopen = []
+        current_root_len = len(self.current_project_root_str) + 1
+        for file in self.current_opened_files:
+            # should be unnecessary, but for now
+            assert file.startswith(self.current_project_root_str)
+            file_header = file[current_root_len:]
+            files_to_reopen.append(file_header)
 
-        sys.exit(exit_code)
+        sort_key = lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name])
+        files_to_reopen.sort(key=sort_key)
 
+        ide_state = loads(open("ide_state.json", 'r').read())
+        ide_state['current_opened_files'] = files_to_reopen
+        ide_state['project_dir'] = self.current_project_root_str
+        ide_state['selected_tab'] = self.file_tabs.currentIndex()
 
-pt_default = """\"\"\"
-default python script
-\"\"\"
+        open("ide_state.json", 'w').write(dumps(ide_state, indent=2))
 
-
-def arbitrary_function(var):
-    \"\"\" arbitrary function \"\"\"
-    return var + (var // 2)
-
-if __name__ == "__main__":
-    # get arbitrary function evaluated at 3
-    print(arbitrary_function(var=3))
-"""
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = Application()
-
     window.show()
-
-    sys.exit(app.exec_())
+    exit_code = app.exec_()
+    window.before_close()
+    sys.exit(exit_code)
