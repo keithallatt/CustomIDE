@@ -20,11 +20,10 @@ TO DEBUG:
 import os
 import subprocess
 import sys
-import tempfile
 from json import loads, dumps
 
 from PyQt5.QtCore import Qt, QDir, QTimer, QModelIndex, QEvent
-from PyQt5.QtGui import QFont, QKeySequence, QFontInfo, QKeyEvent
+from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
                              QColumnView, QFileDialog)
 
@@ -263,7 +262,7 @@ class Application(QWidget):
 
     def close_file(self):
         next_selected, old_name = self.file_tabs.close_tab()
-
+        self.file_tabs.setCurrentIndex(next_selected)
         if next_selected == -1 or not self.current_opened_files:
             self.code_window.setPlainText("""\n\n\n
             No files are currently opened.

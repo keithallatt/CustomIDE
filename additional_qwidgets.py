@@ -16,7 +16,7 @@ import tempfile
 import os
 from json import loads
 
-from PyQt5.QtCore import Qt, QRect, QSize
+from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
 from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
@@ -116,7 +116,7 @@ class QCodeEditor(QPlainTextEdit):
     def keyPressEvent(self, event):
         tc = self.textCursor()
 
-        if event.key() == Qt.Key_Tab :
+        if event.key() == Qt.Key_Tab:
             if tc.selectionStart() == tc.selectionEnd():
                 tc.insertText(" " * (4 - (tc.positionInBlock() % 4)))
             else:
@@ -316,11 +316,14 @@ class QCodeFileTabs(QTabWidget):
         self.setMovable(True)
 
         # connect function to signal made by tab clicking.
+        self.currentChanged: pyqtBoundSignal
         self.currentChanged.connect(self.file_selected_by_index)
         # connect function to signal made by tab rearranging
+        self.tabBar().tabMoved: pyqtBoundSignal
         self.tabBar().tabMoved.connect(self.tabs_rearranged)
 
         self.setTabsClosable(True)
+        self.tabCloseRequested: pyqtBoundSignal
         self.tabCloseRequested.connect(self.close_tab)
 
     @property
@@ -344,19 +347,14 @@ class QCodeFileTabs(QTabWidget):
 
         self.setCurrentIndex(tab_index)
 
-    def save_to_temp(self):
-        tab_to_save = self.tabText(self.currentIndex())
-        if tab_to_save not in self.temp_files.keys():
-            self.temp_files.update({tab_to_save: tempfile.mkstemp()[1]})
-
-        temp_to_save_to = self.temp_files[tab_to_save]
-        code_to_save = self.application.code_window.toPlainText()
-        open(temp_to_save_to, 'w').write(code_to_save)
-        return temp_to_save_to
-
     def close_tab(self, index: int = None):
         if index is None:
             index = self.currentIndex()
+
+        # possible fix for file not updating on tab close.
+        if index == self.last_tab_index:
+            self.last_tab_index = None
+
         name = self.tabText(index)
         self.tabs.pop(name)
         self.removeTab(index)
@@ -379,6 +377,9 @@ class QCodeFileTabs(QTabWidget):
         self.last_tab_index = self.indexOf(self.tabs[self._last_file_selected])
 
     def file_selected_by_index(self, index: int) -> None:
+        if index == -1:
+            return
+
         if self.last_tab_index is not None:
             last_tab = self.tabText(self.last_tab_index)
 
