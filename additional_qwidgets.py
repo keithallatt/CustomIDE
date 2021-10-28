@@ -117,25 +117,23 @@ class QCodeEditor(QPlainTextEdit):
     def keyPressEvent(self, event):
         tc = self.textCursor()
 
-        if event.key() == Qt.Key_Down:
-            if self.blockCount() - 1 == tc.blockNumber():
-                # last number
-                tc.setPosition(len(self.toPlainText()))
-                self.setTextCursor(tc)
-                return
-        if event.key() == Qt.Key_Up:
-            if tc.blockNumber() == 0:
-                # last number
-                tc.setPosition(0)
-                self.setTextCursor(tc)
-                return
-
+        # for navigating (up and down on top and bottom lines)
+        if event.key() == Qt.Key_Down and self.blockCount() - 1 == tc.blockNumber():
+            # last number
+            tc.setPosition(len(self.toPlainText()))
+            self.setTextCursor(tc)
+            return
+        if event.key() == Qt.Key_Up and tc.blockNumber() == 0:
+            # right the beginning
+            tc.setPosition(0)
+            self.setTextCursor(tc)
+            return
+        # prevent shift-return from making extra newlines in a block (block = line in this case)
         if event.key() == Qt.Key_Return:
-            # prevent shift-return from making extra newlines in a block (block = line in this case)
             tc.insertText("\n")
             self.setTextCursor(tc)
             return
-
+        # for indentation
         if event.key() == Qt.Key_Tab:
             if tc.selectionStart() == tc.selectionEnd():
                 tc.insertText(" " * (4 - (tc.positionInBlock() % 4)))
@@ -171,6 +169,7 @@ class QCodeEditor(QPlainTextEdit):
 
                 self.setTextCursor(tc)
             return
+        # for un-indenting
         if event.key() == Qt.Key_Backtab:
             if tc.selectionStart() == tc.selectionEnd():
                 line_number = tc.blockNumber()
@@ -232,6 +231,71 @@ class QCodeEditor(QPlainTextEdit):
                 tc.endEditBlock()
 
                 self.setTextCursor(tc)
+            return
+
+        # need to do the bracket matching and quote matching for single and triple
+        need_to_match = {
+            Qt.Key_ParenLeft: "()",
+            Qt.Key_BraceLeft: "{}",
+            Qt.Key_BracketLeft: "[]",
+        }
+
+        matching_closing = {
+            Qt.Key_ParenRight, Qt.Key_BraceRight, Qt.Key_BracketRight
+        }
+
+        need_to_match_strings = {
+            Qt.Key_QuoteDbl: "\"\"",
+            Qt.Key_Apostrophe: "\'\'"
+        }
+
+        if event.key() in need_to_match.keys():
+            matching_str = need_to_match[event.key()]
+
+            tc.insertText(matching_str[0])
+            pos = tc.position()
+            tc.insertText(matching_str[1])
+            tc.setPosition(pos)
+            self.setTextCursor(tc)
+            return
+
+        # for matching close ), ], }
+        if event.key() in matching_closing:
+            pos = tc.position()
+            next_1 = self.toPlainText()[pos:pos + 1]
+            if ord(next_1) == event.key():
+                tc.setPosition(pos+1)
+                self.setTextCursor(tc)
+                return
+
+        if event.key() in need_to_match_strings.keys():
+            matching_str = need_to_match_strings[event.key()]
+
+            tc.insertText(matching_str[0])
+            self.setTextCursor(tc)
+            pos = tc.position()
+
+            last_3 = self.toPlainText()[max(0, pos-3):pos]
+            last_3_1_before = self.toPlainText()[max(0, pos-4):pos-1]
+
+            if last_3 in ["'''", '"""'] and last_3_1_before not in ["'''", '"""']:
+                tc.insertText(last_3)
+                tc.setPosition(pos)
+            else:
+                next_1 = self.toPlainText()[pos:pos+1]
+
+                if next_1 == matching_str[1]:
+                    tc.deleteChar()
+                    tc.setPosition(pos)
+                    self.setTextCursor(tc)
+                    return
+                else:
+                    tc.insertText(matching_str[1])
+                    tc.setPosition(pos)
+
+            self.setTextCursor(tc)
+
+            return
 
         return QPlainTextEdit.keyPressEvent(self, event)
 
