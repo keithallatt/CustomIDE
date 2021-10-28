@@ -79,7 +79,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
         # things for like f"thing {var}" or r"raw string"
         string_prefix_regex = r"(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF|b|B|br|Br|bR|BR|rb|rB|Rb|RB)?"
-        fstring_prefix_regex = r"(f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)?"
+        fstring_prefix_regex = r"(f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)"
 
         # Multi-line strings (expression, flag, style)
         self.tri_single = (QtCore.QRegExp(string_prefix_regex + "'''"), 1, STYLES['string2'])
