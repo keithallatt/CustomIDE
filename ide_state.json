@@ -2,7 +2,11 @@
   "ide_title": "Custom IDE @ Keith Allatt",
   "project_dir": "/home/kallatt/PycharmProjects/CustomIDE/sample_project",
   "default_project_dir": "~",
-  "current_opened_files": [],
+  "current_opened_files": [
+    "main.py",
+    "second_file.py",
+    "third_file.py"
+  ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "editor_font_color": "#ffffff",
@@ -12,8 +16,14 @@
   "foreground_window_color": "#ffffff",
   "line_number_color": "#aaaaaa",
   "line_highlight_color": "#8888aa",
-  "python_syntax_highlighter": "syntax_highlighter_pycharm_darcula.json",
+  "python_syntax_highlighter": "syntax_highlighter_custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": -1,
-  "save_on_run": false
+  "selected_tab": 2,
+  "save_on_run": false,
+  "window_geometry": [
+    823,
+    329,
+    1440,
+    773
+  ]
 }

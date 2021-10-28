@@ -14,10 +14,11 @@ Code has been modified to fit specific needs / wants.
 import re
 import tempfile
 import os
+import colorsys
 from json import loads
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
-from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
+from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QKeyEvent
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
                              QStyleOptionButton, QTabWidget)
@@ -115,6 +116,25 @@ class QCodeEditor(QPlainTextEdit):
 
     def keyPressEvent(self, event):
         tc = self.textCursor()
+
+        if event.key() == Qt.Key_Down:
+            if self.blockCount() - 1 == tc.blockNumber():
+                # last number
+                tc.setPosition(len(self.toPlainText()))
+                self.setTextCursor(tc)
+                return
+        if event.key() == Qt.Key_Up:
+            if tc.blockNumber() == 0:
+                # last number
+                tc.setPosition(0)
+                self.setTextCursor(tc)
+                return
+
+        if event.key() == Qt.Key_Return:
+            # prevent shift-return from making extra newlines in a block (block = line in this case)
+            tc.insertText("\n")
+            self.setTextCursor(tc)
+            return
 
         if event.key() == Qt.Key_Tab:
             if tc.selectionStart() == tc.selectionEnd():

@@ -33,14 +33,20 @@ from linting import run_linter_on_code
 
 
 class Application(QWidget):
+    """
+    The main IDE application window. Contains everything from the code editor window
+    to the file window, to the file tabs.
+    """
     def __init__(self, parent=None):
+        """ Create the widget """
         super().__init__(parent)
-        self.resize(2200, 1800)
-        self.move(200, 100)
-
         self.ide_state = loads(open("ide_state.json", 'r').read())
         shortcuts = loads(open("shortcuts.json", 'r').read())
         self.setWindowTitle(self.ide_state.get("ide_title", "ide"))
+
+        x, y, w, h = self.ide_state.get('window_geometry', [100, 100, 1000, 1000])
+        self.resize(w, h)
+        self.move(x, y)
 
         self.python_bin = self.ide_state.get("python_bin_location", "/usr/bin/python3")
 
@@ -122,6 +128,7 @@ class Application(QWidget):
         # Create the view in the splitter.
         view = QColumnView(self.tree)
         view.doubleClicked.connect(self.open_file)
+
         # Set the model of the view.
         view.setModel(self.model)
         # Set the root index of the view as the user's home directory.
@@ -178,20 +185,37 @@ class Application(QWidget):
         files = [
             os.sep.join([self.current_project_root_str, current_file]) for current_file in current_files
         ]
-        for f in files:
-            self.open_file(f)
 
-        self.file_tabs.setCurrentIndex(self.ide_state['selected_tab'])
+        current_index = self.ide_state['selected_tab']
+        number_before_missing = 0
+        for i, f in enumerate(files):
+            if os.path.exists(f):
+                self.open_file(f)
+            elif i <= current_index:
+                # counts number missing before the 'selected' so we can more closely find which tab to open to.
+                number_before_missing += 1
+
+        current_index -= number_before_missing
+
+        # makes sure current index is in range 0 <= index < number of tabs
+        current_index = max(0, min(current_index, len(self.file_tabs.tabs.keys())-1))
+
+        self.file_tabs.setCurrentIndex(current_index)
 
         # right at the end, grab focus to the code editor
         self.code_window.setFocus()
 
     def focusNextPrevChild(self, _: bool) -> bool:
+        """ Filter for focusing other widgets. Prevents this. """
         # should prevent focus switching
         # parameter 'next' renamed to '_' as 'next' shadows a builtin.
         return False
 
     def eventFilter(self, q_object, event):
+        """
+        Prevents tab and backtab from changing focus and also allows for control tab and control backtab
+        (ctrl-shift-tab) to switch open tabs.
+        """
         if event.type() == QEvent.KeyPress:
             if event.key() == Qt.Key_Tab and event.modifiers() == Qt.ControlModifier:
                 # for tab / ctrl tab
@@ -340,11 +364,20 @@ class Application(QWidget):
             file_header = file[current_root_len:]
             files_to_reopen.append(file_header)
 
+        # todo: choose to save on exit.
+
         files_to_reopen.sort(key=lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name]))
 
         self.ide_state['current_opened_files'] = files_to_reopen
         self.ide_state['project_dir'] = self.current_project_root_str
         self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
+
+        size = self.size()
+        position = self.pos()
+
+        geometry = [position.x(), position.y(), size.width(), size.height()]
+
+        self.ide_state['window_geometry'] = geometry
 
         open("ide_state.json", 'w').write(dumps(self.ide_state, indent=2))
 
