@@ -13,7 +13,7 @@ TODO:
  - add venv to projects if desired (could be useful, and is recommended practice)
  - select file to be the designated run file
  - add option for extensibility modules (like a folder of 'mods' that are auto integrated)
- - add menu bar ???
+ - add menu bar ??? (have to add stuff to it though)
 
 TO DEBUG:
  - add linting to code
@@ -24,17 +24,17 @@ import subprocess
 import sys
 from json import loads, dumps
 
-from PyQt5.QtCore import Qt, QDir, QTimer, QModelIndex, QEvent
+from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent
 from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
-                             QColumnView, QFileDialog)
+                             QColumnView, QFileDialog, QMainWindow)
 
 import syntax
 from additional_qwidgets import QCodeEditor, RotatedButton, QCodeFileTabs
 from linting import run_linter_on_code
 
 
-class CustomIntegratedDevelopmentEnvironment(QWidget):
+class CustomIntegratedDevelopmentEnvironment(QMainWindow):
     """
     The main IDE application window. Contains everything from the code editor window
     to the file window, to the file tabs.
@@ -51,9 +51,123 @@ class CustomIntegratedDevelopmentEnvironment(QWidget):
         self.move(x, y)
 
         self.python_bin = self.ide_state.get("python_bin_location", "/usr/bin/python3")
-
         self.linting_results = []
+        self.current_opened_files = set()
 
+        self.set_style_sheet()
+        self.set_up_file_editor()
+
+        self.highlighter = syntax.PythonHighlighter(self.code_window.document())
+
+        self.set_up_shortcuts(shortcuts)
+
+        # not currently using, but would like to do something like this in the future
+        # self.timer = QTimer(self)
+        # self.timer.timeout.connect(self.perform_lint)
+
+        self.set_up_button_window()
+        self.set_up_project_viewer()
+        self.set_up_layout()
+        self.set_up_from_save_state()
+
+        # QMainWindow
+        self.setCentralWidget(self.central_widget_holder)
+
+        self.menu_bar = self.menuBar()
+        file_menu = self.menu_bar.addMenu('&File')
+        edit_menu = self.menu_bar.addMenu('&Edit')
+        run_menu = self.menu_bar.addMenu('&Run')
+        help_menu = self.menu_bar.addMenu('&Help')
+
+        # todo: add stuff to menus
+
+        self.statusBar().showMessage('Ready')
+        # right at the end, grab focus to the code editor
+        self.code_window.setFocus()
+
+    def set_up_button_window(self):
+        self.hide_files_button = RotatedButton("Hide")
+        self.hide_files_button: QPushButton  # gets rid of warning.
+        self.hide_files_button.clicked.connect(self.show_hide_files_widget)
+        self.button_widget = QWidget()
+        button_widget_layout = QGridLayout()
+        button_widget_layout.addWidget(self.hide_files_button, 0, 0, 1, 1)
+        self.button_widget.setLayout(button_widget_layout)
+
+    def set_up_project_viewer(self):
+        self.file_box = QWidget()
+        self.model = QFileSystemModel()
+        self.model.setRootPath('')
+        self.tree = QTreeView()
+        # Create the view in the splitter.
+        view = QColumnView(self.tree)
+        view.doubleClicked.connect(self.open_file)
+        # Set the model of the view.
+        view.setModel(self.model)
+        # Set the root index of the view as the user's home directory.
+        proj_dir = self.ide_state['project_dir']
+        proj_dir = os.path.expanduser(proj_dir)
+        if not os.path.exists(proj_dir):
+            proj_dir = self.ide_state['default_project_dir']
+            proj_dir = os.path.expanduser(proj_dir)
+        assert os.path.exists(proj_dir), "Default Project Folder does not exist."
+        view.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
+        self.current_project_root = proj_dir.split(os.sep)
+        self.current_project_root_str = proj_dir
+        self.tree.setViewport(view)
+        self.tree.setAnimated(False)
+        self.tree.setIndentation(20)
+        self.tree.setSortingEnabled(True)
+        self.tree_view = view
+        # self.tree.setWindowTitle("Project Files")
+
+    def set_up_layout(self):
+        file_box_layout = QGridLayout()
+        file_box_layout.addWidget(self.tree, 0, 0, 1, 1)
+        file_box_layout.setColumnStretch(0, 1)
+        file_box_layout.setRowStretch(0, 1)
+        self.file_box.setLayout(file_box_layout)
+        layout = QGridLayout()
+        layout.addWidget(self.button_widget, 0, 0, 2, 1)
+        layout.addWidget(self.file_box, 0, 1, 2, 1)
+        layout.addWidget(self.file_tabs, 0, 2, 1, 1)
+        layout.addWidget(self.code_window, 1, 2, 1, 1)
+        self.file_window_show_column_info = 1, 2
+        layout.setColumnStretch(0, 0)  # make button widget small
+        layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
+        layout.setColumnStretch(2, 5)  # make code window larger
+        layout.setRowStretch(1, 1)
+        self.grid_layout = layout
+        self.central_widget_holder = QWidget()
+        self.central_widget_holder.setLayout(layout)
+
+    def set_up_from_save_state(self):
+        if self.ide_state.get('file_box_hidden', False):
+            self.hide_files_button.click()
+        # put default before opening files
+        self.code_window.setPlainText("""\n\n\n
+                    No files are currently opened.
+                    Double-click on a file to start editing.\n\n\n\n""")
+        self.code_window.setEnabled(False)
+        # open up current opened files. (one until further notice)
+        current_files = self.ide_state['current_opened_files']
+        files = [
+            os.sep.join([self.current_project_root_str, current_file]) for current_file in current_files
+        ]
+        current_index = self.ide_state['selected_tab']
+        number_before_missing = 0
+        for i, f in enumerate(files):
+            if os.path.exists(f):
+                self.open_file(f)
+            elif i <= current_index:
+                # counts number missing before the 'selected' so we can more closely find which tab to open to.
+                number_before_missing += 1
+        current_index -= number_before_missing
+        # makes sure current index is in range 0 <= index < number of tabs
+        current_index = max(0, min(current_index, len(self.file_tabs.tabs.keys()) - 1))
+        self.file_tabs.setCurrentIndex(current_index)
+
+    def set_style_sheet(self):
         # set global style sheet
         self.setStyleSheet(
             "QWidget {"
@@ -67,145 +181,46 @@ class CustomIntegratedDevelopmentEnvironment(QWidget):
             "}"
             "QTabBar::close-button { image: url(app_assets/close.png); }  "
             "QTabBar::close-button:hover { image: url(app_assets/close-hover.png); }"
+            "QMainWindow {"
+            f"  background-color: {self.ide_state['background_window_color']};"
+            f"  color: {self.ide_state['foreground_window_color']};"
+            "}"
+            "QMenuBar {"
+            f"  background-color: {self.ide_state['background_window_color']};"
+            f"  color: {self.ide_state['foreground_window_color']};"
+            "}"
         )
 
-        self.current_opened_files = set()
-
+    def set_up_file_editor(self):
         # need file tabs.
         self.file_tabs = QCodeFileTabs(self)
-
         # background dealt with in QCodeEditor class
         self.code_window = QCodeEditor()  # QPlainTextEdit with Line Numbers and highlighting.
         self.code_window.installEventFilter(self)
-
         font_name = self.ide_state.get('editor_font_family', "Courier New")
         font_size = self.ide_state.get('editor_font_size', 12)
-
         backup_font = QFont("Courier New", 12)
         q = QFont(font_name, font_size)
         qfi = QFontInfo(q)
         self.code_window.setFont(q if font_name == qfi.family() else backup_font)
-        self.highlighter = syntax.PythonHighlighter(self.code_window.document())
 
+    def set_up_shortcuts(self, shortcuts):
         # SHORTCUTS
-
         # set Ctrl-Shift-R to be the run shortcut.
         self.run_shortcut = QShortcut(QKeySequence(shortcuts.get("run", "Ctrl+Shift+R")), self)
         self.run_shortcut.activated.connect(self.run_function)
-
         # set Ctrl-N to be the new file shortcut.
         self.new_file_shortcut = QShortcut(QKeySequence(shortcuts.get("new", "Ctrl+N")), self)
         self.new_file_shortcut.activated.connect(self.new_file)
-
         # set Ctrl-S to be the save shortcut.
         self.save_shortcut = QShortcut(QKeySequence(shortcuts.get("save", "Ctrl+S")), self)
         self.save_shortcut.activated.connect(self.save_file)
-
         # set Ctrl-W to be the close shortcut.
         self.close_shortcut = QShortcut(QKeySequence(shortcuts.get("close", "Ctrl+W")), self)
         self.close_shortcut.activated.connect(self.close_file)
-
         # set Ctrl-Shift-O to be the close shortcut.
         self.open_project_shortcut = QShortcut(QKeySequence(shortcuts.get("open_project", "Ctrl+Shift+O")), self)
         self.open_project_shortcut.activated.connect(self.open_project)
-
-        # not currently using, but would like to do something like this in the future
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.perform_lint)
-
-        self.hide_files_button = RotatedButton("Hide")
-        self.hide_files_button: QPushButton  # gets rid of warning.
-        self.hide_files_button.clicked.connect(self.show_hide_files_widget)
-
-        self.button_widget = QWidget()
-        button_widget_layout = QGridLayout()
-        button_widget_layout.addWidget(self.hide_files_button, 0, 0, 1, 1)
-        self.button_widget.setLayout(button_widget_layout)
-
-        self.file_box = QWidget()
-        self.model = QFileSystemModel()
-
-        self.model.setRootPath('')
-        self.tree = QTreeView()
-        # Create the view in the splitter.
-        view = QColumnView(self.tree)
-        view.doubleClicked.connect(self.open_file)
-
-        # Set the model of the view.
-        view.setModel(self.model)
-        # Set the root index of the view as the user's home directory.
-        proj_dir = self.ide_state['project_dir']
-        proj_dir = os.path.expanduser(proj_dir)
-
-        if not os.path.exists(proj_dir):
-            proj_dir = self.ide_state['default_project_dir']
-            proj_dir = os.path.expanduser(proj_dir)
-
-        assert os.path.exists(proj_dir), "Default Project Folder does not exist."
-
-        view.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
-        self.current_project_root = proj_dir.split(os.sep)
-        self.current_project_root_str = proj_dir
-
-        self.tree.setViewport(view)
-        self.tree.setAnimated(False)
-        self.tree.setIndentation(20)
-        self.tree.setSortingEnabled(True)
-        self.tree_view = view
-        self.tree.setWindowTitle("Project Files")
-
-        file_box_layout = QGridLayout()
-        file_box_layout.addWidget(self.tree, 0, 0, 1, 1)
-        file_box_layout.setColumnStretch(0, 1)
-        file_box_layout.setRowStretch(0, 1)
-        self.file_box.setLayout(file_box_layout)
-
-        layout = QGridLayout()
-        layout.addWidget(self.button_widget, 0, 0, 2, 1)
-        layout.addWidget(self.file_box, 0, 1, 2, 1)
-        layout.addWidget(self.file_tabs, 0, 2, 1, 1)
-        layout.addWidget(self.code_window, 1, 2, 1, 1)
-
-        self.file_window_show_column_info = 1, 2
-
-        layout.setColumnStretch(0, 0)  # make button widget small
-        layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
-        layout.setColumnStretch(2, 5)  # make code window larger
-        layout.setRowStretch(1, 1)
-
-        self.grid_layout = layout
-        self.setLayout(layout)
-
-        # put default before opening files
-        self.code_window.setPlainText("""\n\n\n
-                    No files are currently opened.
-                    Double-click on a file to start editing.\n\n\n\n""")
-        self.code_window.setEnabled(False)
-
-        # open up current opened files. (one until further notice)
-        current_files = self.ide_state['current_opened_files']
-        files = [
-            os.sep.join([self.current_project_root_str, current_file]) for current_file in current_files
-        ]
-
-        current_index = self.ide_state['selected_tab']
-        number_before_missing = 0
-        for i, f in enumerate(files):
-            if os.path.exists(f):
-                self.open_file(f)
-            elif i <= current_index:
-                # counts number missing before the 'selected' so we can more closely find which tab to open to.
-                number_before_missing += 1
-
-        current_index -= number_before_missing
-
-        # makes sure current index is in range 0 <= index < number of tabs
-        current_index = max(0, min(current_index, len(self.file_tabs.tabs.keys())-1))
-
-        self.file_tabs.setCurrentIndex(current_index)
-
-        # right at the end, grab focus to the code editor
-        self.code_window.setFocus()
 
     def focusNextPrevChild(self, _: bool) -> bool:
         """ Filter for focusing other widgets. Prevents this. """
@@ -336,7 +351,13 @@ class CustomIntegratedDevelopmentEnvironment(QWidget):
             else:
                 file_path_to_run = self.file_tabs.save_to_temp()
 
-        subprocess.call(['gnome-terminal', '--', self.python_bin, '-i', file_path_to_run])
+        if not os.path.exists(file_path_to_run):
+            print("File path not a file... potential issue.")
+            return
+
+        process_call = ['gnome-terminal', '--', self.python_bin, '-i', file_path_to_run]
+        self.statusBar().showMessage(f"Running '{' '.join(process_call)}'")
+        subprocess.call(process_call)
 
     def perform_lint(self):
         if self.current_opened_file is None:
@@ -373,14 +394,13 @@ class CustomIntegratedDevelopmentEnvironment(QWidget):
         self.ide_state['current_opened_files'] = files_to_reopen
         self.ide_state['project_dir'] = self.current_project_root_str
         self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
+        self.ide_state['file_box_hidden'] = self.file_box.isHidden()
 
         size = self.size()
         position = self.pos()
 
         geometry = [position.x(), position.y(), size.width(), size.height()]
-
         self.ide_state['window_geometry'] = geometry
-
         open("ide_state.json", 'w').write(dumps(self.ide_state, indent=2))
 
 
@@ -392,6 +412,7 @@ def main():
     window = CustomIntegratedDevelopmentEnvironment()
     window.show()
     exit_code = app.exec_()
+    # call the ide widget's before close option.
     window.before_close()
     sys.exit(exit_code)
 

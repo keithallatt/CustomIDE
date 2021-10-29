@@ -18,12 +18,13 @@
   "line_highlight_color": "#8888aa",
   "syntax_highlighter_theme": "syntax_highlighter_custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 2,
+  "selected_tab": 0,
   "save_on_run": false,
   "window_geometry": [
-    4030,
-    555,
+    4158,
+    511,
     1440,
     773
-  ]
+  ],
+  "file_box_hidden": false
 }
