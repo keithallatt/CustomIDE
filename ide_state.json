@@ -5,7 +5,8 @@
   "current_opened_files": [
     "main.py",
     "second_file.py",
-    "third_file.py"
+    "third_file.py",
+    "file.json"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
@@ -16,13 +17,13 @@
   "foreground_window_color": "#ffffff",
   "line_number_color": "#aaaaaa",
   "line_highlight_color": "#8888aa",
-  "syntax_highlighter_theme": "syntax_highlighter_custom_blue.json",
+  "syntax_highlighter_theme": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 0,
+  "selected_tab": 3,
   "save_on_run": false,
   "window_geometry": [
-    4158,
-    511,
+    495,
+    280,
     1440,
     773
   ],

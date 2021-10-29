@@ -14,6 +14,7 @@ Code has been modified to fit specific needs / wants.
 import os
 import re
 import tempfile
+import syntax
 from json import loads
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
@@ -517,6 +518,14 @@ class QCodeFileTabs(QTabWidget):
         next_tab = self.tabText(index)
         next_temp_file = self.temp_files.get(next_tab,
                                              self.application.current_project_root_str + os.sep + next_tab)
+
+        # set appropriate syntax highlighter
+        self.application.highlighter = {
+            ".py": syntax.PythonHighlighter,
+            ".json": syntax.JSONHighlighter
+        }.get(
+            "unspecified" if '.' not in next_tab else next_tab[next_tab.index('.'):], None
+        )(self.application.code_window.document())
 
         self.application.code_window.setPlainText(open(next_temp_file, 'r').read())
 

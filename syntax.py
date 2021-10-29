@@ -15,9 +15,10 @@ from json import loads
 from re import escape
 import builtins
 import inspect
+import os
 
 
-def format_(color, style=''):
+def format_color(color, style=''):
     """ Return a QTextCharFormat with the given attributes. """
     _color = QtGui.QColor()
     _color.setNamedColor(color)
@@ -34,8 +35,9 @@ def format_(color, style=''):
 
 # syntax styles like for keywords or for operators / built-ins.
 STYLES = {
-    k: format_(*v) for k, v in loads(
-        open(loads(open("ide_state.json", 'r').read())['syntax_highlighter_theme'], 'r').read()
+    k: format_color(*v) for k, v in loads(
+        open("syntax_highlighters" + os.sep +
+             loads(open("ide_state.json", 'r').read())['syntax_highlighter_theme'], 'r').read()
     ).items()
 }
 
@@ -105,7 +107,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
             # gets rid of them in function definitions (returns to default editor color.)
             (r'\bdef\b\s*[a-zA-Z_][a-zA-Z_0-9]*\s*\(.*([a-zA-Z_][a-zA-Z_0-9]*)\s*=[^=].*\)', 1,
-             format_(loads(open("ide_state.json", 'r').read())['editor_font_color']))
+             format_color(loads(open("ide_state.json", 'r').read())['editor_font_color']))
         ]
 
         rules += [(rf'\b{b}\b', 0, STYLES['builtins'])
@@ -233,3 +235,38 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
         # Return whether we're still inside a multi-line string
         return self.currentBlockState() == in_state
+
+
+class JSONHighlighter(QtGui.QSyntaxHighlighter):
+    """Syntax highlighter for the JSON language. """
+
+    def __init__(self, parent: QtGui.QTextDocument) -> None:
+        super().__init__(parent)
+
+        rules = [
+            (r"\b[1-9][0-9]+\b", 0, STYLES['numbers']),
+            (r"(\"[^\"]*\")\s*:", 1, STYLES['builtins']),
+            (r":\s*(\"[^\"]*\")", 1, STYLES['string']),
+            (r"(,|:)", 0, STYLES['keyword'])
+
+        ]
+
+        # Build a QRegExp for each pattern
+        self.rules = [(QtCore.QRegExp(pat), index, fmt)
+                      for (pat, index, fmt) in rules]
+
+    def highlightBlock(self, text):
+        """Apply syntax highlighting to the given block of text. """
+        # Do other syntax formatting
+        for expression, nth, format_ in self.rules:
+            index = expression.indexIn(text, 0)
+
+            while index >= 0:
+                # We actually want the index of the nth match
+                index = expression.pos(nth)
+                length = len(expression.cap(nth))
+                self.setFormat(index, length, format_)
+                index = expression.indexIn(text, index + length)
+
+        self.setCurrentBlockState(0)
+

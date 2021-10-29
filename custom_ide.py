@@ -14,10 +14,9 @@ TODO:
  - select file to be the designated run file
  - add option for extensibility modules (like a folder of 'mods' that are auto integrated)
  - add menu bar ??? (have to add stuff to it though)
+ - add support for java and json potentially (other languages i know?)
+ - add q-thread or something for linting
 
-TO DEBUG:
- - add linting to code
- - tab /shift-tab behaviour
 """
 import os
 import subprocess
@@ -27,7 +26,7 @@ from json import loads, dumps
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent
 from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
-                             QColumnView, QFileDialog, QMainWindow)
+                             QColumnView, QFileDialog, QMainWindow, QToolBar, QAction)
 
 import syntax
 from additional_qwidgets import QCodeEditor, RotatedButton, QCodeFileTabs
@@ -56,7 +55,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.set_style_sheet()
         self.set_up_file_editor()
-
         self.highlighter = syntax.PythonHighlighter(self.code_window.document())
 
         self.set_up_shortcuts(shortcuts)
@@ -73,17 +71,49 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         # QMainWindow
         self.setCentralWidget(self.central_widget_holder)
 
-        self.menu_bar = self.menuBar()
-        file_menu = self.menu_bar.addMenu('&File')
-        edit_menu = self.menu_bar.addMenu('&Edit')
-        run_menu = self.menu_bar.addMenu('&Run')
-        help_menu = self.menu_bar.addMenu('&Help')
-
-        # todo: add stuff to menus
+        self.set_up_toolbar()
+        self.set_up_menu_bar()
 
         self.statusBar().showMessage('Ready')
         # right at the end, grab focus to the code editor
         self.code_window.setFocus()
+
+    def set_up_menu_bar(self):
+        # todo: add stuff to menus
+        self.menu_bar = self.menuBar()
+        file_menu = self.menu_bar.addMenu('&File')
+        edit_menu = self.menu_bar.addMenu('&Edit')
+        view_menu = self.menu_bar.addMenu('&View')
+
+        show_tool_bar_action = QAction("Show Toolbar", self)
+        show_tool_bar_action.setCheckable(True)
+
+        def show_hide_toolbar():
+            if self.toolbar.isHidden():
+                self.toolbar.show()
+                show_tool_bar_action.setChecked(True)
+            else:
+                self.toolbar.hide()
+                show_tool_bar_action.setChecked(False)
+
+        show_hide_toolbar()
+        show_tool_bar_action.triggered.connect(show_hide_toolbar)
+
+        view_menu.addAction(show_tool_bar_action)
+
+        run_menu = self.menu_bar.addMenu('&Run')
+        help_menu = self.menu_bar.addMenu('&Help')
+
+    def set_up_toolbar(self):
+        # todo: add stuff to tool bars
+        self.toolbar = QToolBar("Custom IDE Toolbar")
+
+        button_action = QAction("Run", self)
+        button_action.setStatusTip("Run the current file")
+        button_action.triggered.connect(self.run_function)
+        self.toolbar.addAction(button_action)
+
+        self.addToolBar(self.toolbar)
 
     def set_up_button_window(self):
         self.hide_files_button = RotatedButton("Hide")
