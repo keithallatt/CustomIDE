@@ -35,7 +35,7 @@ def format_(color, style=''):
 # syntax styles like for keywords or for operators / built-ins.
 STYLES = {
     k: format_(*v) for k, v in loads(
-        open(loads(open("ide_state.json", 'r').read())['python_syntax_highlighter'], 'r').read()
+        open(loads(open("ide_state.json", 'r').read())['syntax_highlighter_theme'], 'r').read()
     ).items()
 }
 

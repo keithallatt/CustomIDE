@@ -16,7 +16,7 @@
   "foreground_window_color": "#ffffff",
   "line_number_color": "#aaaaaa",
   "line_highlight_color": "#8888aa",
-  "python_syntax_highlighter": "syntax_highlighter_custom_blue.json",
+  "syntax_highlighter_theme": "syntax_highlighter_custom_blue.json",
   "save_on_close_automatically": false,
   "selected_tab": 2,
   "save_on_run": false,

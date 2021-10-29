@@ -129,7 +129,16 @@ class QCodeEditor(QPlainTextEdit):
             return
         # prevent shift-return from making extra newlines in a block (block = line in this case)
         if event.key() == Qt.Key_Return:
-            tc.insertText("\n")
+            current_line = self.toPlainText().split("\n")[tc.blockNumber()]
+
+            m = re.match(r"\s*", current_line)
+            whitespace = m.group(0)
+            whitespace = whitespace.replace("\t", "    ")  # 4 spaces per tab if they somehow get in there.
+
+            if current_line[:tc.positionInBlock()].endswith(":"):
+                whitespace += "    "
+
+            tc.insertText("\n" + whitespace)
             self.setTextCursor(tc)
             return
         # for indentation
@@ -282,18 +291,13 @@ class QCodeEditor(QPlainTextEdit):
                 tc.setPosition(pos)
             else:
                 next_1 = self.toPlainText()[pos:pos+1]
-
                 if next_1 == matching_str[1]:
                     tc.deleteChar()
                     tc.setPosition(pos)
-                    self.setTextCursor(tc)
-                    return
                 else:
                     tc.insertText(matching_str[1])
                     tc.setPosition(pos)
-
             self.setTextCursor(tc)
-
             return
 
         # if the delete key is pressed, then check for "|" or like (|)
@@ -306,6 +310,17 @@ class QCodeEditor(QPlainTextEdit):
                 tc.deletePreviousChar()
                 self.setTextCursor(tc)
                 return
+
+            # if delete isn't for the matching pairs part, check for indentation parts.
+            current_line = self.toPlainText()[tc.position() - tc.positionInBlock(): tc.position()]
+            m = re.match(r"^\s*$", current_line)
+            if m is not None:
+                l = len(current_line)
+                if l:
+                    for i in range((l-1) % 4 + 1):
+                        tc.deletePreviousChar()
+                    self.setTextCursor(tc)
+                    return
 
         return QPlainTextEdit.keyPressEvent(self, event)
 
