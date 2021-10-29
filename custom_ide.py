@@ -13,7 +13,6 @@ TODO:
  - add venv to projects if desired (could be useful, and is recommended practice)
  - select file to be the designated run file
  - add option for extensibility modules (like a folder of 'mods' that are auto integrated)
- - when deleting in Code Editor, check to see if inside matching (e.g ' "|" ' or ' (|) ') (where | is the cursor)
  - add menu bar ???
 
 TO DEBUG:

@@ -296,6 +296,17 @@ class QCodeEditor(QPlainTextEdit):
 
             return
 
+        # if the delete key is pressed, then check for "|" or like (|)
+        if event.key() == Qt.Key_Backspace:
+            pos = tc.position()
+            prev_and_next = self.toPlainText()[max(0, pos-1):pos+1]
+            matching_pairs = list(need_to_match.values()) + list(need_to_match_strings.values())
+            if prev_and_next in matching_pairs:
+                tc.deleteChar()
+                tc.deletePreviousChar()
+                self.setTextCursor(tc)
+                return
+
         return QPlainTextEdit.keyPressEvent(self, event)
 
     def line_number_area_width(self):
