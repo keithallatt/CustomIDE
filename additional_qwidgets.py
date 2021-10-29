@@ -524,7 +524,7 @@ class QCodeFileTabs(QTabWidget):
             ".py": syntax.PythonHighlighter,
             ".json": syntax.JSONHighlighter
         }.get(
-            "unspecified" if '.' not in next_tab else next_tab[next_tab.index('.'):], None
+            "unspecified" if '.' not in next_tab else next_tab[next_tab.index('.'):], lambda _: None
         )(self.application.code_window.document())
 
         self.application.code_window.setPlainText(open(next_temp_file, 'r').read())

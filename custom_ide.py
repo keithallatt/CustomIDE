@@ -16,6 +16,8 @@ TODO:
  - add menu bar ??? (have to add stuff to it though)
  - add support for java and json potentially (other languages i know?)
  - add q-thread or something for linting
+ - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
+     another click
 
 """
 import os
@@ -24,12 +26,11 @@ import sys
 from json import loads, dumps
 
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent
-from PyQt5.QtGui import QFont, QKeySequence, QFontInfo
-from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QPushButton, QShortcut, QFileSystemModel, QTreeView,
+from PyQt5.QtGui import QFont, QFontInfo
+from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QTreeView,
                              QColumnView, QFileDialog, QMainWindow, QToolBar, QAction)
 
-import syntax
-from additional_qwidgets import QCodeEditor, RotatedButton, QCodeFileTabs
+from additional_qwidgets import QCodeEditor, QCodeFileTabs
 from linting import run_linter_on_code
 
 
@@ -38,6 +39,10 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
     The main IDE application window. Contains everything from the code editor window
     to the file window, to the file tabs.
     """
+
+    NO_FILES_OPEN_TEXT = "\n\n\n\n\tNo files are currently opened.\n\t" \
+                         "Double-click on a file in the side window to start editing.\n\n\n\n"
+
     def __init__(self, parent=None):
         """ Create the widget """
         super().__init__(parent)
@@ -49,40 +54,103 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.resize(w, h)
         self.move(x, y)
 
-        self.python_bin = self.ide_state.get("python_bin_location", "/usr/bin/python3")
         self.linting_results = []
         self.current_opened_files = set()
-
         self.set_style_sheet()
+
+        self.file_tabs = QCodeFileTabs(self)
+        self.code_window = QCodeEditor(self)
         self.set_up_file_editor()
-        self.highlighter = syntax.PythonHighlighter(self.code_window.document())
+        self.highlighter = None
 
-        self.set_up_shortcuts(shortcuts)
-
-        # not currently using, but would like to do something like this in the future
-        # self.timer = QTimer(self)
-        # self.timer.timeout.connect(self.perform_lint)
-
-        self.set_up_button_window()
+        self.file_box = QWidget()
+        self.model = QFileSystemModel()
+        self.tree = QTreeView()
+        self.current_project_root = None
+        self.current_project_root_str = None
+        self.tree_view = None
         self.set_up_project_viewer()
+
+        self.file_window_show_column_info = 1, 2
+        self.grid_layout = None
+
+        self.button_widget = QWidget()
         self.set_up_layout()
+
         self.set_up_from_save_state()
 
         # QMainWindow
-        self.setCentralWidget(self.central_widget_holder)
-
+        self.toolbar = QToolBar("Custom IDE Toolbar")
         self.set_up_toolbar()
-        self.set_up_menu_bar()
+
+        self.menu_bar = self.menuBar()
+        self.set_up_menu_bar(shortcuts)
 
         self.statusBar().showMessage('Ready')
         # right at the end, grab focus to the code editor
         self.code_window.setFocus()
 
-    def set_up_menu_bar(self):
+    def set_up_menu_bar(self, shortcuts):
         # todo: add stuff to menus
-        self.menu_bar = self.menuBar()
         file_menu = self.menu_bar.addMenu('&File')
+
+        # set Ctrl-N to be the new file shortcut.
+        new_file_action = QAction("New File", self)
+        new_file_action.setShortcut(shortcuts.get("new", "Ctrl+N"))
+        new_file_action.triggered.connect(self.new_file)
+
+        # set Ctrl-W to be the close shortcut.
+        close_file_action = QAction("Close", self)
+        close_file_action.setShortcut(shortcuts.get("close", "Ctrl+W"))
+        close_file_action.triggered.connect(self.close_file)
+
+        # set Ctrl-S to be the save shortcut.
+        save_file_action = QAction("Save", self)
+        save_file_action.setShortcut(shortcuts.get("save", "Ctrl+S"))
+        save_file_action.triggered.connect(self.save_file)
+
+        # set Ctrl-Shift-O to be the close shortcut.
+        open_project_action = QAction("Open Project", self)
+        open_project_action.setShortcut(shortcuts.get("open_project", "Ctrl+Shift+O"))
+        open_project_action.triggered.connect(self.open_project)
+
+        file_menu.addActions([
+            new_file_action,
+            close_file_action,
+            save_file_action,
+            open_project_action
+        ])
+
         edit_menu = self.menu_bar.addMenu('&Edit')
+
+        cut_action = QAction("Cut", self)
+        cut_action.setShortcut("Ctrl+X")
+        cut_action.triggered.connect(self.code_window.cut)
+
+        copy_action = QAction("Copy", self)
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self.code_window.copy)
+
+        paste_action = QAction("Paste", self)
+        paste_action.setShortcut("Ctrl+V")
+        paste_action.triggered.connect(self.code_window.paste)
+
+        undo_action = QAction("Undo", self)
+        undo_action.setShortcut("Ctrl+Z")
+        undo_action.triggered.connect(self.code_window.undo)
+
+        redo_action = QAction("Redo", self)
+        redo_action.setShortcut("Ctrl+Shift+Z")
+        redo_action.triggered.connect(self.code_window.redo)
+
+        edit_menu.addActions([
+            cut_action,
+            copy_action,
+            paste_action,
+            undo_action,
+            redo_action
+        ])
+
         view_menu = self.menu_bar.addMenu('&View')
 
         show_tool_bar_action = QAction("Show Toolbar", self)
@@ -99,15 +167,44 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         show_hide_toolbar()
         show_tool_bar_action.triggered.connect(show_hide_toolbar)
 
+        show_files_action = QAction("Show Files", self)
+        show_files_action.setCheckable(True)
+
+        def show_hide_files_widget():
+            if self.file_box.isHidden():
+                self.grid_layout.setColumnStretch(*self.file_window_show_column_info)
+                self.file_box.show()
+                show_files_action.setChecked(True)
+            else:
+                self.file_box.hide()
+                self.grid_layout.setColumnStretch(self.file_window_show_column_info[0], 0)
+                show_files_action.setChecked(False)
+
+        show_files_action.triggered.connect(show_hide_files_widget)
+        show_hide_files_widget()
+
         view_menu.addAction(show_tool_bar_action)
+        view_menu.addAction(show_files_action)
 
         run_menu = self.menu_bar.addMenu('&Run')
+
+        # set Ctrl-R to be the run shortcut
+        run_action = QAction("Run...", self)
+        run_action.setShortcut(shortcuts.get("run", "Ctrl+Shift+R"))
+        run_action.triggered.connect(self.run_function)
+
+        run_menu.addAction(run_action)
+
         help_menu = self.menu_bar.addMenu('&Help')
+
+        help_action = QAction("Help", self)
+        help_action.setShortcut("Ctrl+Shift+H")
+        # help_action.triggered.connect(...)
+
+        help_menu.addAction(help_action)
 
     def set_up_toolbar(self):
         # todo: add stuff to tool bars
-        self.toolbar = QToolBar("Custom IDE Toolbar")
-
         button_action = QAction("Run", self)
         button_action.setStatusTip("Run the current file")
         button_action.triggered.connect(self.run_function)
@@ -115,20 +212,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.addToolBar(self.toolbar)
 
-    def set_up_button_window(self):
-        self.hide_files_button = RotatedButton("Hide")
-        self.hide_files_button: QPushButton  # gets rid of warning.
-        self.hide_files_button.clicked.connect(self.show_hide_files_widget)
-        self.button_widget = QWidget()
-        button_widget_layout = QGridLayout()
-        button_widget_layout.addWidget(self.hide_files_button, 0, 0, 1, 1)
-        self.button_widget.setLayout(button_widget_layout)
-
     def set_up_project_viewer(self):
-        self.file_box = QWidget()
-        self.model = QFileSystemModel()
         self.model.setRootPath('')
-        self.tree = QTreeView()
         # Create the view in the splitter.
         view = QColumnView(self.tree)
         view.doubleClicked.connect(self.open_file)
@@ -162,22 +247,21 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         layout.addWidget(self.file_box, 0, 1, 2, 1)
         layout.addWidget(self.file_tabs, 0, 2, 1, 1)
         layout.addWidget(self.code_window, 1, 2, 1, 1)
-        self.file_window_show_column_info = 1, 2
         layout.setColumnStretch(0, 0)  # make button widget small
         layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
         layout.setColumnStretch(2, 5)  # make code window larger
         layout.setRowStretch(1, 1)
         self.grid_layout = layout
-        self.central_widget_holder = QWidget()
-        self.central_widget_holder.setLayout(layout)
+        central_widget_holder = QWidget()
+        central_widget_holder.setLayout(layout)
+        self.setCentralWidget(central_widget_holder)
 
     def set_up_from_save_state(self):
         if self.ide_state.get('file_box_hidden', False):
-            self.hide_files_button.click()
+            # todo: fix this behaviour
+            pass
         # put default before opening files
-        self.code_window.setPlainText("""\n\n\n
-                    No files are currently opened.
-                    Double-click on a file to start editing.\n\n\n\n""")
+        self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
         self.code_window.setEnabled(False)
         # open up current opened files. (one until further notice)
         current_files = self.ide_state['current_opened_files']
@@ -209,8 +293,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             f"  background-color: {self.ide_state['background_window_color']};"
             f"  color: {self.ide_state['foreground_window_color']};"
             "}"
-            "QTabBar::close-button { image: url(app_assets/close.png); }  "
-            "QTabBar::close-button:hover { image: url(app_assets/close-hover.png); }"
+            # "QTabBar::close-button { image: url(app_assets/close.png); }  "
+            # "QTabBar::close-button:hover { image: url(app_assets/close-hover.png); }"
             "QMainWindow {"
             f"  background-color: {self.ide_state['background_window_color']};"
             f"  color: {self.ide_state['foreground_window_color']};"
@@ -219,13 +303,13 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             f"  background-color: {self.ide_state['background_window_color']};"
             f"  color: {self.ide_state['foreground_window_color']};"
             "}"
+            "QMenuBar::item {background-color: #313131;  color: #ffffff; }"
+            "QMenuBar::item::selected { background-color: #1e1e1e; }"
+            "QMenu { background-color: #313131; color: #ffffff; border: 1px solid #000; }"
+            "QMenu::item::selected { background-color: #1e1e1e; }"
         )
 
     def set_up_file_editor(self):
-        # need file tabs.
-        self.file_tabs = QCodeFileTabs(self)
-        # background dealt with in QCodeEditor class
-        self.code_window = QCodeEditor()  # QPlainTextEdit with Line Numbers and highlighting.
         self.code_window.installEventFilter(self)
         font_name = self.ide_state.get('editor_font_family', "Courier New")
         font_size = self.ide_state.get('editor_font_size', 12)
@@ -233,24 +317,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         q = QFont(font_name, font_size)
         qfi = QFontInfo(q)
         self.code_window.setFont(q if font_name == qfi.family() else backup_font)
-
-    def set_up_shortcuts(self, shortcuts):
-        # SHORTCUTS
-        # set Ctrl-Shift-R to be the run shortcut.
-        self.run_shortcut = QShortcut(QKeySequence(shortcuts.get("run", "Ctrl+Shift+R")), self)
-        self.run_shortcut.activated.connect(self.run_function)
-        # set Ctrl-N to be the new file shortcut.
-        self.new_file_shortcut = QShortcut(QKeySequence(shortcuts.get("new", "Ctrl+N")), self)
-        self.new_file_shortcut.activated.connect(self.new_file)
-        # set Ctrl-S to be the save shortcut.
-        self.save_shortcut = QShortcut(QKeySequence(shortcuts.get("save", "Ctrl+S")), self)
-        self.save_shortcut.activated.connect(self.save_file)
-        # set Ctrl-W to be the close shortcut.
-        self.close_shortcut = QShortcut(QKeySequence(shortcuts.get("close", "Ctrl+W")), self)
-        self.close_shortcut.activated.connect(self.close_file)
-        # set Ctrl-Shift-O to be the close shortcut.
-        self.open_project_shortcut = QShortcut(QKeySequence(shortcuts.get("open_project", "Ctrl+Shift+O")), self)
-        self.open_project_shortcut.activated.connect(self.open_project)
 
     def focusNextPrevChild(self, _: bool) -> bool:
         """ Filter for focusing other widgets. Prevents this. """
@@ -260,7 +326,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def eventFilter(self, q_object, event):
         """
-        Prevents tab and backtab from changing focus and also allows for control tab and control backtab
+        Prevents tab and back-tab from changing focus and also allows for control tab and control back-tab
         (ctrl-shift-tab) to switch open tabs.
         """
         if event.type() == QEvent.KeyPress:
@@ -335,9 +401,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         next_selected, old_name = self.file_tabs.close_tab()
         self.file_tabs.setCurrentIndex(next_selected)
         if next_selected == -1 or not self.current_opened_files:
-            self.code_window.setPlainText("""\n\n\n
-            No files are currently opened.
-            Double-click on a file to start editing.\n\n\n\n""")
+            self.highlighter = None
+            self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
             self.code_window.setEnabled(False)
 
     def new_file(self):
@@ -385,9 +450,21 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             print("File path not a file... potential issue.")
             return
 
-        process_call = ['gnome-terminal', '--', self.python_bin, '-i', file_path_to_run]
-        self.statusBar().showMessage(f"Running '{' '.join(process_call)}'")
-        subprocess.call(process_call)
+        if file_path_to_run.endswith(".py"):
+            # running python
+            python_bin = self.ide_state.get("python_bin_location", "/usr/bin/python3")
+            process_call = ['gnome-terminal', '--', python_bin, '-i', file_path_to_run]
+            self.statusBar().showMessage(f"Running '{' '.join(process_call)}'")
+            subprocess.call(process_call)
+        elif file_path_to_run.endswith(".json"):
+            self.statusBar().showMessage(f"Cannot run JSON File.")
+        else:
+            filename = file_path_to_run.split(os.sep)[-1]
+            if '.' in filename:
+                extension = '.'.join(filename.split(".")[1:])
+                self.statusBar().showMessage(f"Unrecognized file type '*.{extension}'")
+            else:
+                self.statusBar().showMessage(f"File {filename} has no extension")
 
     def perform_lint(self):
         if self.current_opened_file is None:
@@ -397,16 +474,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.linting_results = lint_results
         self.code_window.linting_results = lint_results
-
-    def show_hide_files_widget(self):
-        if self.file_box.isHidden():
-            self.grid_layout.setColumnStretch(*self.file_window_show_column_info)
-            self.file_box.show()
-            self.hide_files_button.setText("Hide")
-        else:
-            self.file_box.hide()
-            self.grid_layout.setColumnStretch(self.file_window_show_column_info[0], 0)
-            self.hide_files_button.setText("Show")
 
     def before_close(self):
         files_to_reopen = []

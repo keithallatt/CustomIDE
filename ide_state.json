@@ -3,10 +3,7 @@
   "project_dir": "/home/kallatt/PycharmProjects/CustomIDE/sample_project",
   "default_project_dir": "~",
   "current_opened_files": [
-    "main.py",
-    "second_file.py",
-    "third_file.py",
-    "file.json"
+    "main.py"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
@@ -19,7 +16,7 @@
   "line_highlight_color": "#8888aa",
   "syntax_highlighter_theme": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 3,
+  "selected_tab": 0,
   "save_on_run": false,
   "window_geometry": [
     495,
@@ -27,5 +24,5 @@
     1440,
     773
   ],
-  "file_box_hidden": false
+  "file_box_hidden": true
 }
