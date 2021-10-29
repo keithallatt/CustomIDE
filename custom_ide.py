@@ -12,6 +12,9 @@ TODO:
  - check if file is saved before closing? maybe?  !!!
  - add venv to projects if desired (could be useful, and is recommended practice)
  - select file to be the designated run file
+ - add option for extensibility modules (like a folder of 'mods' that are auto integrated)
+ - when deleting in Code Editor, check to see if inside matching (e.g ' "|" ' or ' (|) ') (where | is the cursor)
+ - add menu bar ???
 
 TO DEBUG:
  - add linting to code
@@ -32,7 +35,7 @@ from additional_qwidgets import QCodeEditor, RotatedButton, QCodeFileTabs
 from linting import run_linter_on_code
 
 
-class Application(QWidget):
+class CustomIntegratedDevelopmentEnvironment(QWidget):
     """
     The main IDE application window. Contains everything from the code editor window
     to the file window, to the file tabs.
@@ -268,8 +271,8 @@ class Application(QWidget):
 
         filename = filepath[len(root_full)+1:]
 
-        self.file_tabs.open_tab(filename)
         self.current_opened_files.add(filepath)
+        self.file_tabs.open_tab(filename)
         self.code_window.setEnabled(True)
 
     def open_project(self):
@@ -382,10 +385,17 @@ class Application(QWidget):
         open("ide_state.json", 'w').write(dumps(self.ide_state, indent=2))
 
 
-if __name__ == '__main__':
+def main():
+    """
+    Create the QApplication window and add the Custom IDE to it.
+    """
     app = QApplication(sys.argv)
-    window = Application()
+    window = CustomIntegratedDevelopmentEnvironment()
     window.show()
     exit_code = app.exec_()
     window.before_close()
     sys.exit(exit_code)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,5 +1,5 @@
 """
-Additional QWidgets, placed here to make application.py more clean.
+Additional QWidgets, placed here to make the code in ./custom_ide.py cleaner.
 
 Uses code from https://stackoverflow.com/questions/40386194/create-text-area-textedit-with-line-number-in-pyqt
 QLineNumberArea and QCodeEditor courtesy of @ acbetter, @ Dan-Dev, and @ Axel Schneider
@@ -11,14 +11,13 @@ Code has been modified to fit specific needs / wants.
 - Allowed colors to be read in from ide_state.json for example
 - made rotated buttons not look as bloated. May be an issue on some systems but it works great for me.
 """
+import os
 import re
 import tempfile
-import os
-import colorsys
 from json import loads
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
-from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QKeyEvent
+from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
                              QStyleOptionButton, QTabWidget)
@@ -435,6 +434,8 @@ class QCodeFileTabs(QTabWidget):
         if index is None:
             index = self.currentIndex()
 
+        self.save_to_temp(index)
+
         # possible fix for file not updating on tab close.
         if index == self.last_tab_index:
             self.last_tab_index = None
@@ -460,21 +461,32 @@ class QCodeFileTabs(QTabWidget):
     def tabs_rearranged(self):
         self.last_tab_index = self.indexOf(self.tabs[self._last_file_selected])
 
+    def save_to_temp(self, index: int = None):
+        """
+        Save a tab's contents to a temp file when needed.
+        :param index: The index of the tab to save.
+        """
+        if index is None:
+            index = self.currentIndex()
+
+        last_tab = self.tabText(index)
+        if last_tab not in self.temp_files.keys():
+            # keep until program quits.
+            self.temp_files.update({last_tab: tempfile.mkstemp()[1]})
+        last_temp_file = self.temp_files[last_tab]
+        code_to_save = self.application.code_window.toPlainText()
+        open(last_temp_file, 'w').write(code_to_save)
+
     def file_selected_by_index(self, index: int) -> None:
+        """
+        When a tab is selected, save the old tab to a temp file before
+        :param index: The index of the tab corresponding to the file selected.
+        """
         if index == -1:
             return
 
         if self.last_tab_index is not None:
-            last_tab = self.tabText(self.last_tab_index)
-
-            if last_tab not in self.temp_files.keys():
-                # keep until program quits.
-                self.temp_files.update({last_tab: tempfile.mkstemp()[1]})
-
-            last_temp_file = self.temp_files[last_tab]
-            code_to_save = self.application.code_window.toPlainText()
-
-            open(last_temp_file, 'w').write(code_to_save)
+            self.save_to_temp(self.last_tab_index)
 
         next_tab = self.tabText(index)
         next_temp_file = self.temp_files.get(next_tab,
