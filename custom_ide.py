@@ -507,7 +507,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         open("ide_state.json", 'w').write(json_str)
 
 
-
 def main():
     """
     Create the QApplication window and add the Custom IDE to it.

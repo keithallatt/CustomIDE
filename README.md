@@ -16,11 +16,9 @@ are likely to change.
 
 Current Feature List
  - The ability to open, edit, and save files.
- - Basic linting (gets every convention issue / warning / error),
-   - Unfortunately, this linting process catches everything, so there are some things I'd like to set up that the
-     linter will ignore.
-   - Hovering mouse over the line numbers where linting picked something up will show the pylint message.
- - Python syntax highlighting.
+ - Python and JSON syntax highlighting.
+ - A toolbar and menu bar
 
 ---
 
+There are a lot of plans for the future, but until then, this project is still very much a work in progress.
