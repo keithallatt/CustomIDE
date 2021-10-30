@@ -21,7 +21,7 @@ from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
 from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
-                             QStyleOptionButton, QTabWidget, QTreeView)
+                             QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel)
 
 
 class RotatedButton(QPushButton):
@@ -475,6 +475,12 @@ class QCodeFileTabs(QTabWidget):
         next_index = (self.currentIndex() - 1) % self.count()
         self.setCurrentIndex(next_index)
 
+    def reset_tabs(self):
+        self.tabs = {}
+        self.temp_files = {}
+        self.last_tab_index = None
+        self._last_file_selected = None
+
     def tabs_rearranged(self):
         self.last_tab_index = self.indexOf(self.tabs[self._last_file_selected])
 
@@ -533,3 +539,33 @@ class CTreeView(QTreeView):
             self.application.open_file()
 
         return QTreeView.keyPressEvent(self, event)
+
+
+class SaveFilesOnCloseDialog(QDialog):
+    def __init__(self, parent=None, files=None):
+        super().__init__(parent)
+
+        self.setWindowTitle("Save Before Quitting?")
+
+        QBtn = QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel
+
+        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox.clicked.connect(self.button_clicked)
+
+        self.layout = QVBoxLayout()
+
+        label_string = "The following file(s) have not been saved: \n\n"
+        label_string += "\n\t".join(files)
+        label_string += "\n\nSave before quitting?"
+
+        message = QLabel(label_string)
+
+        self.layout.addWidget(message)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+        self.response = None
+
+    def button_clicked(self, button: QPushButton):
+        self.response = button.text().replace("&", "")  # remove mnemonic part
+        self.accept()

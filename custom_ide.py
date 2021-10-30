@@ -8,13 +8,8 @@ Count lines with:
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
 
 TODO:
- - additional shortcuts
- - check if file is saved before closing? maybe?  !!!
  - add venv to projects if desired (could be useful, and is recommended practice)
- - select file to be the designated run file
  - add option for extensibility modules (like a folder of 'mods' that are auto integrated)
- - add menu bar ??? (have to add stuff to it though)
- - add support for java and json potentially (other languages i know?)
  - add q-thread or something for linting
  - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
      another click
@@ -32,7 +27,7 @@ from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
                              QAction, QPushButton, QStyle)
 
-from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView
+from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog
 from linting import run_linter_on_code
 
 
@@ -70,7 +65,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.tree = CTreeView(self)
         self.current_project_root = None
         self.current_project_root_str = None
-        self.tree_view = None
         self.set_up_project_viewer()
 
         self.file_window_show_column_info = 1, 2
@@ -82,7 +76,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.set_up_from_save_state()
 
         # QMainWindow
-        self.toolbar = QToolBar("Custom IDE Toolbar")
+        self.toolbar = None
         self.set_up_toolbar()
 
         self.menu_bar = self.menuBar()
@@ -215,6 +209,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def set_up_toolbar(self):
         # todo: add stuff to tool bars
+        self.toolbar = QToolBar("Custom IDE Toolbar")
         run_button = QPushButton("Run")
         run_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         run_button.clicked.connect(self.run_function)
@@ -293,6 +288,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         # makes sure current index is in range 0 <= index < number of tabs
         current_index = max(0, min(current_index, len(self.file_tabs.tabs.keys()) - 1))
         self.file_tabs.setCurrentIndex(current_index)
+        if len(self.file_tabs.tabs) == 1:
+            # no swapping took place so after this file opens, save to temp
+            self.file_tabs.save_to_temp(0)
 
     def set_style_sheet(self):
         # set global style sheet
@@ -389,6 +387,13 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         return QWidget.eventFilter(self, q_object, event)
 
+    def closeEvent(self, a0):
+        close_after = self.save_before_closing()
+        if close_after:
+            QMainWindow.closeEvent(self, a0)
+        else:
+            a0.ignore()
+
     def _load_code(self, text):
         self.code_window.setPlainText(text)
 
@@ -436,8 +441,25 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.code_window.setEnabled(True)
 
     def open_project(self):
-        print("OPEN PROJECT")
-        print(self)
+        options_ = QFileDialog.Options()
+        options_ |= QFileDialog.DontUseNativeDialog
+        options_ |= QFileDialog.ShowDirsOnly
+        dial = QFileDialog()
+        dial.setDirectory(self.ide_state.get("projects_folder", os.path.expanduser("~")))
+
+        project_to_open = dial.getExistingDirectory(self, "Open Project", "", options=options_)
+
+        if project_to_open == os.path.expanduser(self.ide_state['project_dir']):
+            self.statusBar().showMessage("Project already open")
+        else:
+            # save the files before closing.
+            self.save_before_closing()
+            while self.file_tabs.tabs.keys():
+                self.close_file()
+
+            self.ide_state['project_dir'] = project_to_open.replace(os.path.expanduser("~"), "~", 1)
+            self.set_up_project_viewer()
+            self.file_tabs.reset_tabs()
 
     def save_file(self):
         if not self.current_opened_files:
@@ -496,6 +518,10 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             else:
                 file_path_to_run = self.file_tabs.save_to_temp()
 
+        if file_path_to_run is None:
+            print("File path is None... issue")
+            return
+
         if not os.path.exists(file_path_to_run):
             print("File path not a file... potential issue.")
             return
@@ -525,6 +551,36 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.linting_results = lint_results
         self.code_window.linting_results = lint_results
 
+    def save_before_closing(self):
+        # todo: set option to ask in ide_state maybe?
+
+        # save the file currently looking at first.
+        if self.file_tabs.tabs:
+            self.file_tabs.save_to_temp(self.file_tabs.currentIndex())
+
+        proj_root = self.current_project_root_str + os.sep
+        unsaved_files = []
+        save_from = dict()
+        for k, v in self.file_tabs.temp_files.items():
+            file = proj_root + k
+            if open(file, 'r').read() != open(v, 'r').read():
+                unsaved_files.append(k)
+                save_from[file] = v
+
+        if unsaved_files:
+            save_files_dialog = SaveFilesOnCloseDialog(self, unsaved_files)
+            save_files_dialog.exec()
+
+            if save_files_dialog.response == "Cancel" or save_files_dialog.response is None:
+                return False
+
+            if save_files_dialog.response == "Yes":
+                for s_to, s_from in save_from.items():
+                    file_contents = open(s_from, 'r').read()
+                    open(s_to, 'w').write(file_contents)
+
+        return True
+
     def before_close(self):
         files_to_reopen = []
         current_root_len = len(self.current_project_root_str) + 1
@@ -534,12 +590,10 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             file_header = file[current_root_len:]
             files_to_reopen.append(file_header)
 
-        # todo: choose to save on exit.
-
         files_to_reopen.sort(key=lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name]))
 
         self.ide_state['current_opened_files'] = files_to_reopen
-        self.ide_state['project_dir'] = self.current_project_root_str
+        self.ide_state['project_dir'] = self.current_project_root_str.replace(os.path.expanduser('~'), '~', 1)
         self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
         self.ide_state['file_box_hidden'] = self.file_box.isHidden()
         self.ide_state['tool_bar_hidden'] = self.toolbar.isHidden()
