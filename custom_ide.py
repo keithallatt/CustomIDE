@@ -28,7 +28,7 @@ from json import loads, dumps
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QTreeView,
-                             QColumnView, QFileDialog, QMainWindow, QToolBar, QAction)
+                             QColumnView, QFileDialog, QMainWindow, QToolBar, QAction, QPushButton, QStyle)
 
 from additional_qwidgets import QCodeEditor, QCodeFileTabs
 from linting import run_linter_on_code
@@ -164,8 +164,12 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
                 self.toolbar.hide()
                 show_tool_bar_action.setChecked(False)
 
-        show_hide_toolbar()
         show_tool_bar_action.triggered.connect(show_hide_toolbar)
+
+        if self.ide_state.get('tool_bar_hidden', False):
+            show_hide_toolbar()
+        else:
+            show_tool_bar_action.setChecked(True)
 
         show_files_action = QAction("Show Files", self)
         show_files_action.setCheckable(True)
@@ -181,7 +185,11 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
                 show_files_action.setChecked(False)
 
         show_files_action.triggered.connect(show_hide_files_widget)
-        show_hide_files_widget()
+
+        if self.ide_state.get('file_box_hidden', False):
+            show_hide_files_widget()
+        else:
+            show_files_action.setChecked(True)
 
         view_menu.addAction(show_tool_bar_action)
         view_menu.addAction(show_files_action)
@@ -189,7 +197,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         run_menu = self.menu_bar.addMenu('&Run')
 
         # set Ctrl-R to be the run shortcut
-        run_action = QAction("Run...", self)
+        run_action = QAction("Run", self)
         run_action.setShortcut(shortcuts.get("run", "Ctrl+Shift+R"))
         run_action.triggered.connect(self.run_function)
 
@@ -205,11 +213,11 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def set_up_toolbar(self):
         # todo: add stuff to tool bars
-        button_action = QAction("Run", self)
-        button_action.setStatusTip("Run the current file")
-        button_action.triggered.connect(self.run_function)
-        self.toolbar.addAction(button_action)
+        run_button = QPushButton("Run")
+        run_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        run_button.clicked.connect(self.run_function)
 
+        self.toolbar.addWidget(run_button)
         self.addToolBar(self.toolbar)
 
     def set_up_project_viewer(self):
@@ -257,9 +265,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.setCentralWidget(central_widget_holder)
 
     def set_up_from_save_state(self):
-        if self.ide_state.get('file_box_hidden', False):
-            # todo: fix this behaviour
-            pass
         # put default before opening files
         self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
         self.code_window.setEnabled(False)
@@ -293,8 +298,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             f"  background-color: {self.ide_state['background_window_color']};"
             f"  color: {self.ide_state['foreground_window_color']};"
             "}"
-            # "QTabBar::close-button { image: url(app_assets/close.png); }  "
-            # "QTabBar::close-button:hover { image: url(app_assets/close-hover.png); }"
             "QMainWindow {"
             f"  background-color: {self.ide_state['background_window_color']};"
             f"  color: {self.ide_state['foreground_window_color']};"
@@ -492,13 +495,17 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.ide_state['project_dir'] = self.current_project_root_str
         self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
         self.ide_state['file_box_hidden'] = self.file_box.isHidden()
+        self.ide_state['tool_bar_hidden'] = self.toolbar.isHidden()
 
         size = self.size()
         position = self.pos()
 
         geometry = [position.x(), position.y(), size.width(), size.height()]
         self.ide_state['window_geometry'] = geometry
-        open("ide_state.json", 'w').write(dumps(self.ide_state, indent=2))
+
+        json_str = dumps(self.ide_state, indent=2)
+        open("ide_state.json", 'w').write(json_str)
+
 
 
 def main():
