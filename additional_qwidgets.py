@@ -21,7 +21,7 @@ from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
 from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
-                             QStyleOptionButton, QTabWidget)
+                             QStyleOptionButton, QTabWidget, QTreeView)
 
 
 class RotatedButton(QPushButton):
@@ -112,10 +112,15 @@ class QCodeEditor(QPlainTextEdit):
         self.linting_results = []
         self.line_number_area_linting_tooltips = {}
 
+        self.application = parent
         self.font_height = 10  # approximate until starts drawing
 
     def keyPressEvent(self, event):
         tc = self.textCursor()
+
+        if event.key() == Qt.Key_1 and event.modifiers() == Qt.AltModifier:
+            self.application.focus_file_explorer()
+            return
 
         # for navigating (up and down on top and bottom lines)
         if event.key() == Qt.Key_Down and self.blockCount() - 1 == tc.blockNumber():
@@ -368,15 +373,9 @@ class QCodeEditor(QPlainTextEdit):
 
     def line_number_area_paint_event(self, event):
         painter = QPainter(self.lineNumberArea)
-        ide_state = loads(open("ide_state.json", 'r').read())
+        ide_state = self.application.ide_state
         window_color = QColor(ide_state['background_window_color'])
         line_color = QColor(ide_state['line_number_color'])
-
-        lint_colors = {
-            "error": (QColor("#800000"), 3),
-            "warning": (QColor("#808000"), 2),
-            "convention": (QColor("#006010"), 1)
-        }
 
         painter.fillRect(event.rect(), window_color)
         block = self.firstVisibleBlock()
@@ -391,16 +390,7 @@ class QCodeEditor(QPlainTextEdit):
             if block.isVisible() and (bottom >= event.rect().top()):
                 number = str(block_number + 1)
 
-                _color = window_color
-                _severity = -1
-                for result in self.linting_results:
-                    if str(result['line_number']) == number:
-                        color, severity = lint_colors.get(result['kind'], (line_color, 0))
-                        if severity > _severity:
-                            _color, _severity = color, severity
-                            self.line_number_area_linting_tooltips.update({int(number): result['message']})
-
-                painter.fillRect(0, int(top), int(self.lineNumberArea.width()), int(height), _color)
+                painter.fillRect(0, int(top), int(self.lineNumberArea.width()), int(height), window_color)
 
                 painter.setPen(line_color)
                 painter.drawText(0, int(top), int(self.lineNumberArea.width()), int(height), Qt.AlignRight, number)
@@ -531,3 +521,15 @@ class QCodeFileTabs(QTabWidget):
 
         self.last_tab_index = index
         self._last_file_selected = next_tab
+
+
+class CTreeView(QTreeView):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.application = parent
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            self.application.open_file()
+
+        return QTreeView.keyPressEvent(self, event)

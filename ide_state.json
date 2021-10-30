@@ -3,27 +3,25 @@
   "project_dir": "/home/kallatt/PycharmProjects/CustomIDE/sample_project",
   "default_project_dir": "~",
   "current_opened_files": [
-    "main.py"
+    "file.json"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "editor_font_color": "#ffffff",
-  "background_app_color": "#222222",
-  "background_window_color": "#222222",
-  "background_code_color": "#222244",
+  "background_window_color": "#222233",
   "foreground_window_color": "#ffffff",
-  "line_number_color": "#aaaaaa",
+  "line_number_color": "#9999bb",
   "line_highlight_color": "#8888aa",
   "syntax_highlighter_theme": "custom_blue.json",
   "save_on_close_automatically": false,
   "selected_tab": 0,
   "save_on_run": false,
   "window_geometry": [
+    4116,
     495,
-    280,
     1489,
     885
   ],
-  "file_box_hidden": false,
-  "tool_bar_hidden": false
+  "file_box_hidden": true,
+  "tool_bar_hidden": true
 }

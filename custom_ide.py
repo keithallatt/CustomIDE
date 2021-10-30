@@ -23,14 +23,16 @@ TODO:
 import os
 import subprocess
 import sys
+import re
 from json import loads, dumps
+from colorsys import rgb_to_hsv, hsv_to_rgb
 
-from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent
+from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel
 from PyQt5.QtGui import QFont, QFontInfo
-from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QTreeView,
-                             QColumnView, QFileDialog, QMainWindow, QToolBar, QAction, QPushButton, QStyle)
+from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
+                             QAction, QPushButton, QStyle)
 
-from additional_qwidgets import QCodeEditor, QCodeFileTabs
+from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView
 from linting import run_linter_on_code
 
 
@@ -65,7 +67,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.file_box = QWidget()
         self.model = QFileSystemModel()
-        self.tree = QTreeView()
+        self.tree = CTreeView(self)
         self.current_project_root = None
         self.current_project_root_str = None
         self.tree_view = None
@@ -222,11 +224,13 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def set_up_project_viewer(self):
         self.model.setRootPath('')
-        # Create the view in the splitter.
-        view = QColumnView(self.tree)
-        view.doubleClicked.connect(self.open_file)
+        self.tree.doubleClicked.connect(self.open_file)
+
         # Set the model of the view.
-        view.setModel(self.model)
+        self.tree.setModel(self.model)
+        for i in range(1, self.tree.model().columnCount()):
+            self.tree.header().hideSection(i)
+
         # Set the root index of the view as the user's home directory.
         proj_dir = self.ide_state['project_dir']
         proj_dir = os.path.expanduser(proj_dir)
@@ -234,15 +238,19 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             proj_dir = self.ide_state['default_project_dir']
             proj_dir = os.path.expanduser(proj_dir)
         assert os.path.exists(proj_dir), "Default Project Folder does not exist."
-        view.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
+
+        self.tree.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
         self.current_project_root = proj_dir.split(os.sep)
         self.current_project_root_str = proj_dir
-        self.tree.setViewport(view)
         self.tree.setAnimated(False)
         self.tree.setIndentation(20)
         self.tree.setSortingEnabled(True)
-        self.tree_view = view
-        # self.tree.setWindowTitle("Project Files")
+        self.tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+
+    def focus_file_explorer(self):
+        self.tree.setFocus()
+        i = self.tree.selectionModel().currentIndex()
+        self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def set_up_layout(self):
         file_box_layout = QGridLayout()
@@ -288,28 +296,64 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def set_style_sheet(self):
         # set global style sheet
+        bwc = self.ide_state['background_window_color']
+        fwc = self.ide_state['foreground_window_color']
+
+        lighter_factor = 1.2
+        darker_factor = 2
+        lbwc = "#313131"
+        dbwc = "#1e1e1e"
+
+        m = re.match("#(..)(..)(..)", bwc)
+
+        if m is not None:
+            r, g, b = m.groups()
+            r = int(r, 16) / 255
+            g = int(g, 16) / 255
+            b = int(b, 16) / 255
+            h, s, v = rgb_to_hsv(r, g, b)
+
+            vl = min(1.0, lighter_factor * v)
+            vd = min(1.0, darker_factor * v)
+
+            r, g, b = hsv_to_rgb(h, s, vl)
+            r = hex(int(r * 255))[2:].zfill(2)
+            g = hex(int(g * 255))[2:].zfill(2)
+            b = hex(int(b * 255))[2:].zfill(2)
+            lbwc = f"#{r}{g}{b}"
+
+            r, g, b = hsv_to_rgb(h, s, vd)
+            r = hex(int(r * 255))[2:].zfill(2)
+            g = hex(int(g * 255))[2:].zfill(2)
+            b = hex(int(b * 255))[2:].zfill(2)
+            dbwc = f"#{r}{g}{b}"
+
         self.setStyleSheet(
             "QWidget {"
-            f"  background-color: {self.ide_state['background_window_color']};"
-            f"  color: {self.ide_state['foreground_window_color']};"
+            f"  background-color: {bwc};  color: {fwc};"
             "}"
             ""
             "QToolTip {"
-            f"  background-color: {self.ide_state['background_window_color']};"
-            f"  color: {self.ide_state['foreground_window_color']};"
+            f"  background-color: {bwc};  color: {fwc};"
             "}"
             "QMainWindow {"
-            f"  background-color: {self.ide_state['background_window_color']};"
-            f"  color: {self.ide_state['foreground_window_color']};"
+            f"  background-color: {bwc};  color: {fwc};"
             "}"
             "QMenuBar {"
-            f"  background-color: {self.ide_state['background_window_color']};"
-            f"  color: {self.ide_state['foreground_window_color']};"
+            f"  background-color: {lbwc};  color: {fwc};"
             "}"
-            "QMenuBar::item {background-color: #313131;  color: #ffffff; }"
-            "QMenuBar::item::selected { background-color: #1e1e1e; }"
-            "QMenu { background-color: #313131; color: #ffffff; border: 1px solid #000; }"
-            "QMenu::item::selected { background-color: #1e1e1e; }"
+            "QMenuBar::item {"
+            f"   background-color: {lbwc};  color: {fwc}; "
+            "}"
+            "QMenuBar::item::selected { "
+            f"   background-color: {dbwc}; "
+            "}"
+            "QMenu { "
+            f"   background-color: {lbwc};  color: {fwc}; border: 1px solid {dbwc};"
+            "}"
+            "QMenu::item::selected { "
+            f"   background-color: {dbwc}; "
+            "}"
         )
 
     def set_up_file_editor(self):
@@ -354,7 +398,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
     def open_file(self, filepath: str = None):
         # if used for shortcut
         if filepath is None:
-            q_model_indices = self.tree_view.selectedIndexes()
+            q_model_indices = self.tree.selectedIndexes()
             assert len(q_model_indices) <= 1, "Multiple selected."
             last_index = q_model_indices[-1]
 
@@ -366,6 +410,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
             file_paths.append("")
             filepath = os.sep.join(file_paths[::-1])
+
+            self.open_file(filepath)
+            return
 
         # for double click
         if type(filepath) == QModelIndex:
@@ -515,7 +562,6 @@ def main():
     window = CustomIntegratedDevelopmentEnvironment()
     window.show()
     exit_code = app.exec_()
-    # call the ide widget's before close option.
     window.before_close()
     sys.exit(exit_code)
 
