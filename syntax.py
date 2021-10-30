@@ -145,12 +145,12 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             (r'# *todo *\(([^\n]+)\)', 1, STYLES['todo_author']),
 
             # f-string insides. (with { and } )
-            (fstring_prefix_regex + r'"[^\"]*(\{[^\}]*\})[^\"]*\"', 2, STYLES['keyword']),
-            (fstring_prefix_regex + r"'[^\']*(\{[^\}]*\})[^\']*\'", 2, STYLES['keyword']),
+            # (fstring_prefix_regex + r'"[^\"]*(\{[^\}]*\})[^\"]*\"', 2, STYLES['keyword']),
+            # (fstring_prefix_regex + r"'[^\']*(\{[^\}]*\})[^\']*\'", 2, STYLES['keyword']),
 
             # f-string insides. (inside { and } )
-            (fstring_prefix_regex + r'"[^\"]*\{([^\}]*)\}[^\"]*\"', 2, STYLES['operator']),
-            (fstring_prefix_regex + r"'[^\']*\{([^\}]*)\}[^\']*\'", 2, STYLES['operator']),
+            # (fstring_prefix_regex + r'"[^\"]*\{([^\}]*)\}[^\"]*\"', 2, STYLES['operator']),
+            # (fstring_prefix_regex + r"'[^\']*\{([^\}]*)\}[^\']*\'", 2, STYLES['operator']),
         ]
 
         # Build a QRegExp for each pattern
