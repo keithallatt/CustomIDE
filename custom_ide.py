@@ -13,6 +13,7 @@ TODO:
  - add q-thread or something for linting
  - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
      another click
+ - search in file explorer
 
 """
 import os
@@ -27,7 +28,7 @@ from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
                              QAction, QPushButton, QStyle)
 
-from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog
+from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog, SearchBar
 from linting import run_linter_on_code
 
 
@@ -206,6 +207,12 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         # help_action.triggered.connect(...)
 
         help_menu.addAction(help_action)
+
+        ######
+        # set up search bar on right hand side.
+
+        search_bar = SearchBar(self)
+        self.menu_bar.setCornerWidget(search_bar, Qt.TopRightCorner)
 
     def set_up_toolbar(self):
         # todo: add stuff to tool bars
@@ -538,7 +545,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             filename = file_path_to_run.split(os.sep)[-1]
             if '.' in filename:
                 extension = '.'.join(filename.split(".")[1:])
-                self.statusBar().showMessage(f"Unrecognized file type '*.{extension}'")
+                self.statusBar().showMessage(f"Unable to run files of type '*.{extension}'")
             else:
                 self.statusBar().showMessage(f"File {filename} has no extension")
 

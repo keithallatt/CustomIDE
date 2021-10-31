@@ -5,8 +5,6 @@
   "default_project_dir": "~",
   "current_opened_files": [
     "main.py",
-    "second_file.py",
-    "third_file.py",
     "file.json"
   ],
   "editor_font_family": "PragmataPro",
@@ -18,7 +16,7 @@
   "line_highlight_color": "#8888aa",
   "syntax_highlighter_theme": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 3,
+  "selected_tab": 1,
   "save_on_run": false,
   "window_geometry": [
     4116,

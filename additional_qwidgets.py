@@ -21,7 +21,8 @@ from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
 from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
-                             QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel)
+                             QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
+                             QLineEdit, QCompleter)
 
 
 class RotatedButton(QPushButton):
@@ -538,7 +539,24 @@ class CTreeView(QTreeView):
         if event.key() == Qt.Key_Return:
             self.application.open_file()
 
+        self.get_files_as_strings()
+
         return QTreeView.keyPressEvent(self, event)
+
+    def get_files_as_strings(self):
+        def get_files(directory_path):
+            files_in_directory = []
+            if not directory_path.endswith(os.sep):
+                directory_path += os.sep
+            for f in os.listdir(directory_path):
+                files_in_directory.append(directory_path + f)
+                if os.path.isdir(directory_path + f):
+                    files_in_directory += get_files(directory_path + f)
+            return files_in_directory
+
+        files = get_files(self.application.current_project_root_str)
+        cprs_len = len(self.application.current_project_root_str) + 1
+        return [f[cprs_len:] for f in files]
 
 
 class SaveFilesOnCloseDialog(QDialog):
@@ -547,9 +565,9 @@ class SaveFilesOnCloseDialog(QDialog):
 
         self.setWindowTitle("Save Before Quitting?")
 
-        QBtn = QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel
+        q_btn = QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel
 
-        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox = QDialogButtonBox(q_btn)
         self.buttonBox.clicked.connect(self.button_clicked)
 
         self.layout = QVBoxLayout()
@@ -569,3 +587,32 @@ class SaveFilesOnCloseDialog(QDialog):
     def button_clicked(self, button: QPushButton):
         self.response = button.text().replace("&", "")  # remove mnemonic part
         self.accept()
+
+
+class SearchBar(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.application = parent
+
+        files = self.application.tree.get_files_as_strings()
+        data = list(filter(lambda x: x.startswith(self.text()), files))
+
+        self.completer = QCompleter(data)
+        self.completer.setMaxVisibleItems(5)
+        self.setCompleter(self.completer)
+
+    def keyPressEvent(self, a0):
+        if a0.key() == Qt.Key_Return or a0.key() == Qt.Key_Enter:
+            print(self.text())
+
+            fp = self.application.current_project_root_str
+            if not fp.endswith(os.sep):
+                fp += os.sep
+            fp += self.text()
+            if os.path.exists(fp) and os.path.isfile(fp):
+                self.application.open_file(filepath=fp)
+            self.setText("")
+            self.application.code_window.setFocus()
+
+        return QLineEdit.keyPressEvent(self, a0)
+
