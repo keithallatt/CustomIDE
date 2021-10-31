@@ -71,6 +71,14 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         '^=', '|=', '&=', '~=', '>>=', '<<='
     ]))
 
+    escape_seqences = list(map(escape, [
+        r"\\", r"\'", r"\"", r"\n", r"\r", r"\t", r"\b", r"\f"
+    ])) + [  # more general ones.
+        r"\\[0-7]{3}",  # octal escape
+        r"\\h[0-9A-Fa-f]{2}",  # hex escape
+        r"\\u[0-9A-Fa-f]{4}",  # unicode escape
+    ]
+
     # Python braces
     braces = list(map(escape, list("()[]{}")))
 
@@ -156,6 +164,10 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             # (fstring_prefix_regex + r'"[^\"]*\{([^\}]*)\}[^\"]*\"', 2, STYLES['operator']),
             # (fstring_prefix_regex + r"'[^\']*\{([^\}]*)\}[^\']*\'", 2, STYLES['operator']),
         ]
+
+        rules += [(f'{b}', 0, STYLES['keyword'])
+                  for b in PythonHighlighter.escape_seqences]
+
 
         # Build a QRegExp for each pattern
         self.rules = [(QtCore.QRegExp(pat), index, fmt)
