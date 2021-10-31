@@ -81,9 +81,10 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.set_up_toolbar()
 
         self.menu_bar = self.menuBar()
+        self.search_bar = None
         self.set_up_menu_bar(shortcuts)
 
-        self.statusBar().showMessage('Ready')
+        self.statusBar().showMessage('Ready', 3000)
         # right at the end, grab focus to the code editor
         self.code_window.setFocus()
 
@@ -211,8 +212,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         ######
         # set up search bar on right hand side.
 
-        search_bar = SearchBar(self)
-        self.menu_bar.setCornerWidget(search_bar, Qt.TopRightCorner)
+        self.search_bar = SearchBar(self)
+        self.menu_bar.setCornerWidget(self.search_bar, Qt.TopRightCorner)
 
     def set_up_toolbar(self):
         # todo: add stuff to tool bars
@@ -441,6 +442,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         root_full = os.sep.join(self.current_project_root)
         assert filepath.startswith(root_full), "Opening non-project file."
 
+        if os.path.isdir(filepath):
+            return
+
         filename = filepath[len(root_full)+1:]
 
         self.current_opened_files.add(filepath)
@@ -467,6 +471,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             self.ide_state['project_dir'] = project_to_open.replace(os.path.expanduser("~"), "~", 1)
             self.set_up_project_viewer()
             self.file_tabs.reset_tabs()
+            self.search_bar.set_data()
 
     def save_file(self):
         if not self.current_opened_files:
@@ -505,6 +510,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             # actually write to the file.
             open(filename, 'a').close()
             self.open_file(filename)
+            self.search_bar.set_data()
         else:
             return
 

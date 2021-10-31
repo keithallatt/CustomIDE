@@ -594,6 +594,10 @@ class SearchBar(QLineEdit):
         super().__init__(parent)
         self.application = parent
 
+        self.completer = None
+        self.set_data()
+
+    def set_data(self):
         files = self.application.tree.get_files_as_strings()
         data = list(filter(lambda x: x.startswith(self.text()), files))
 
