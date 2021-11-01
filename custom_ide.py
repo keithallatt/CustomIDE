@@ -7,7 +7,7 @@ Count lines with:
 -- WARNING --
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
 
-TODO:
+next steps:
  - add venv to projects if desired (could be useful, and is recommended practice)
  - add option for extensibility modules (like a folder of 'mods' that are auto integrated)
  - add q-thread or something for linting
@@ -58,8 +58,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.file_tabs = QCodeFileTabs(self)
         self.code_window = QCodeEditor(self)
-        self.set_up_file_editor()
         self.highlighter = None
+        self.set_up_file_editor()
 
         self.file_box = QWidget()
         self.model = QFileSystemModel()
@@ -86,6 +86,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.statusBar().showMessage('Ready', 3000)
         # right at the end, grab focus to the code editor
+        self.file_tabs.set_syntax_highlighter()
         self.code_window.setFocus()
 
     # Setup Functions
@@ -234,8 +235,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.menu_bar.setCornerWidget(self.search_bar, Qt.TopRightCorner)
 
     def set_up_toolbar(self):
-        # todo: add stuff to tool bars
-        self.toolbar = QToolBar("Custom IDE Toolbar")
+        self.toolbar = QToolBar("Custom IDE Toolbar", self)
+
         run_button = QPushButton("Run")
         run_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         run_button.clicked.connect(self.run_function)
@@ -246,7 +247,15 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.toolbar.addWidget(run_button)
         self.toolbar.addWidget(save_button)
-        self.addToolBar(self.toolbar)
+
+        tool_bar_area = {
+            "top": Qt.TopToolBarArea,
+            "bottom": Qt.BottomToolBarArea,
+            "left": Qt.LeftToolBarArea,
+            "right": Qt.RightToolBarArea,
+        }[self.ide_state.get('tool_bar_position', "top")]
+
+        self.addToolBar(tool_bar_area, self.toolbar)
 
     def set_up_project_viewer(self):
         self.model.setRootPath('')
@@ -428,6 +437,15 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.ide_state['file_box_hidden'] = self.file_box.isHidden()
         self.ide_state['tool_bar_hidden'] = self.toolbar.isHidden()
 
+        tool_bar_position = {
+            Qt.TopToolBarArea: "top",
+            Qt.BottomToolBarArea: "bottom",
+            Qt.LeftToolBarArea: "left",
+            Qt.RightToolBarArea: "right",
+        }[self.toolBarArea(self.toolbar)]
+
+        self.ide_state['tool_bar_position'] = tool_bar_position
+
         size = self.size()
         position = self.pos()
 
@@ -438,8 +456,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         open("ide_state.json", 'w').write(json_str)
 
     def save_before_closing(self):
-        # todo: set option to ask in ide_state maybe?
-
         # save the file currently looking at first.
         if self.file_tabs.tabs:
             self.file_tabs.save_to_temp(self.file_tabs.currentIndex())

@@ -517,18 +517,32 @@ class QCodeFileTabs(QTabWidget):
         next_temp_file = self.temp_files.get(next_tab,
                                              self.application.current_project_root_str + os.sep + next_tab)
 
-        # set appropriate syntax highlighter
-        self.application.highlighter = {
-            ".py": syntax.PythonHighlighter,
-            ".json": syntax.JSONHighlighter
-        }.get(
-            "unspecified" if '.' not in next_tab else next_tab[next_tab.index('.'):], lambda _: None
-        )(self.application.code_window.document())
+        self.set_syntax_highlighter(next_tab)
 
         self.application.code_window.setPlainText(open(next_temp_file, 'r').read())
 
         self.last_tab_index = index
         self._last_file_selected = next_tab
+
+    def set_syntax_highlighter(self, filename = None):
+        if filename is None:
+            current_widget = self.currentWidget()
+            for k, v in self.tabs.items():
+                if v == current_widget:
+                    filename = k
+                    break
+            else:
+                print("No file open or other issue")
+                return
+
+        # set appropriate syntax highlighter
+        self.application.highlighter = {
+            ".py": syntax.PythonHighlighter,
+            ".json": syntax.JSONHighlighter
+        }.get(
+            "unspecified" if '.' not in filename else filename[filename.index('.'):], lambda _: None
+        )(self.application.code_window.document())
+
 
 
 class CTreeView(QTreeView):
@@ -604,13 +618,23 @@ class SearchBar(QLineEdit):
         self.completer.setMaxVisibleItems(5)
         self.completer.setModel(self.autocomplete_model)
 
-        bgc = self.application.ide_state.get("background_window_color", "#333333")
-        fgc = self.application.ide_state.get("foreground_window_color", "#aaaaaa")
+        ide_state_completion_mode = self.application.ide_state.get("search_completion", "popup")
 
-        self.completer.popup().setStyleSheet(
-            f"background-color: {bgc};"
-            f"color: {fgc};"
-        )
+        completion_mode = {
+            'popup': QCompleter.PopupCompletion,
+            'inline': QCompleter.InlineCompletion
+        }.get(ide_state_completion_mode, QCompleter.PopupCompletion)
+        self.completer.setCompletionMode(completion_mode)
+
+        if completion_mode == QCompleter.PopupCompletion:
+            bgc = self.application.ide_state.get("background_window_color", "#333333")
+            fgc = self.application.ide_state.get("foreground_window_color", "#aaaaaa")
+
+            self.completer.popup().setStyleSheet(
+                f"background-color: {bgc};"
+                f"color: {fgc};"
+            )
+
         self.setCompleter(self.completer)
         self.set_data()
 

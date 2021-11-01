@@ -8,7 +8,8 @@ Also updated as the original looked like it did not handle things such as:
 - highlighting keyword arguments
 - highlighting the b/f/r/u string prefixes for bytes, f-strings, raw strings and unicode.
 - highlighting builtin operators such as 'str' and 'int'
-- handling todo's and todo authors.
+- escape sequences
+- a few other small features
 """
 from PyQt5 import QtCore, QtGui
 from json import loads

@@ -2,7 +2,6 @@
 Sample main, sample change
 """
 
-#todo(keith): write more code!
 
 class Car:
     def __init__(self):
