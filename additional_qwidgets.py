@@ -618,6 +618,8 @@ class CTreeView(QTreeView):
                 else:
                     print(f"WTF is '{directory_path+f}'")
             return files_in_directory
+        if self.application.current_project_root is None:
+            return []
 
         files = get_files(self.application.current_project_root_str)
         cprs_len = len(self.application.current_project_root_str) + 1
@@ -660,6 +662,9 @@ class SearchBar(QLineEdit):
         self.completer.activated.connect(self.activated)
 
     def set_data(self):
+        if self.application.current_project_root is None:
+            return
+
         files = self.application.tree.get_files_as_strings()
 
         while self.autocomplete_model.rowCount() > 0:

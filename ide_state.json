@@ -1,13 +1,8 @@
 {
   "ide_title": "Custom IDE @ Keith Allatt",
   "projects_folder": "~/PycharmProjects",
-  "project_dir": "~/PycharmProjects/CustomIDE/sample_project",
-  "default_project_dir": "~",
-  "current_opened_files": [
-    "main.py",
-    "file.json",
-    "folder1/test.txt"
-  ],
+  "project_dir": null,
+  "current_opened_files": [],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "editor_font_color": "#ffffff",
@@ -17,7 +12,7 @@
   "line_highlight_color": "#8888aa",
   "syntax_highlighter_theme": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 0,
+  "selected_tab": -1,
   "save_on_run": false,
   "window_geometry": [
     257,

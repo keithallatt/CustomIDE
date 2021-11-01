@@ -92,6 +92,181 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     # Setup Functions
 
+    def set_style_sheet(self):
+        # set global style sheet
+        bwc = self.ide_state['background_window_color']
+        fwc = self.ide_state['foreground_window_color']
+
+        lighter_factor = 1.2
+        darker_factor = 2
+        lbwc = "#313131"
+        dbwc = "#1e1e1e"
+
+        m = re.match("#(..)(..)(..)", bwc)
+
+        if m is not None:
+            r, g, b = m.groups()
+            r = int(r, 16) / 255
+            g = int(g, 16) / 255
+            b = int(b, 16) / 255
+            h, s, v = rgb_to_hsv(r, g, b)
+
+            vl = min(1.0, lighter_factor * v)
+            vd = min(1.0, darker_factor * v)
+
+            r, g, b = hsv_to_rgb(h, s, vl)
+            r = hex(int(r * 255))[2:].zfill(2)
+            g = hex(int(g * 255))[2:].zfill(2)
+            b = hex(int(b * 255))[2:].zfill(2)
+            lbwc = f"#{r}{g}{b}"
+
+            r, g, b = hsv_to_rgb(h, s, vd)
+            r = hex(int(r * 255))[2:].zfill(2)
+            g = hex(int(g * 255))[2:].zfill(2)
+            b = hex(int(b * 255))[2:].zfill(2)
+            dbwc = f"#{r}{g}{b}"
+
+        self.setStyleSheet(
+            "QWidget {"
+            f"  background-color: {bwc};  color: {fwc};"
+            "}"
+            ""
+            "QToolTip {"
+            f"  background-color: {bwc};  color: {fwc};"
+            "}"
+            "QMainWindow {"
+            f"  background-color: {bwc};  color: {fwc};"
+            "}"
+            "QMenuBar {"
+            f"  background-color: {lbwc};  color: {fwc};"
+            "}"
+            "QMenuBar::item {"
+            f"   background-color: {lbwc};  color: {fwc}; "
+            "}"
+            "QMenuBar::item::selected { "
+            f"   background-color: {dbwc}; "
+            "}"
+            "QMenu { "
+            f"   background-color: {lbwc};  color: {fwc}; border: 1px solid {dbwc};"
+            "}"
+            "QMenu::item::selected { "
+            f"   background-color: {dbwc}; "
+            "}"
+        )
+
+    def set_up_file_editor(self):
+        self.code_window.installEventFilter(self)
+        font_name = self.ide_state.get('editor_font_family', "Courier New")
+        font_size = self.ide_state.get('editor_font_size', 12)
+        backup_font = QFont("Courier New", 12)
+        q = QFont(font_name, font_size)
+        qfi = QFontInfo(q)
+        self.code_window.setFont(q if font_name == qfi.family() else backup_font)
+
+    def set_up_project_viewer(self):
+        self.model.setRootPath('')
+        self.tree.doubleClicked.connect(self.open_file)
+
+        # Set the model of the view.
+        self.tree.setModel(self.model)
+        for i in range(1, self.tree.model().columnCount()):
+            self.tree.header().hideSection(i)
+
+        # Set the root index of the view as the user's home directory.
+        proj_dir = self.ide_state['project_dir']
+        self.tree.setEnabled(False)
+        if proj_dir is not None:
+            self.tree.setEnabled(True)
+            proj_dir = os.path.expanduser(proj_dir)
+            if not os.path.exists(proj_dir):
+                return
+
+            self.tree.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
+            self.current_project_root = proj_dir.split(os.sep)
+            self.current_project_root_str = proj_dir
+
+        self.tree.setAnimated(False)
+        self.tree.setIndentation(20)
+        self.tree.setSortingEnabled(True)
+        self.tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+
+    def set_up_layout(self):
+        file_box_layout = QGridLayout()
+        file_box_layout.addWidget(self.tree, 0, 0, 1, 1)
+        file_box_layout.setColumnStretch(0, 1)
+        file_box_layout.setRowStretch(0, 1)
+        self.file_box.setLayout(file_box_layout)
+        layout = QGridLayout()
+        layout.addWidget(self.button_widget, 0, 0, 2, 1)
+        layout.addWidget(self.file_box, 0, 1, 2, 1)
+        layout.addWidget(self.file_tabs, 0, 2, 1, 1)
+        layout.addWidget(self.code_window, 1, 2, 1, 1)
+        layout.setColumnStretch(0, 0)  # make button widget small
+        layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
+        layout.setColumnStretch(2, 5)  # make code window larger
+        layout.setRowStretch(1, 1)
+        self.grid_layout = layout
+        central_widget_holder = QWidget()
+        central_widget_holder.setLayout(layout)
+        self.setCentralWidget(central_widget_holder)
+
+    def set_up_from_save_state(self):
+        # put default before opening files
+        self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
+        self.code_window.setEnabled(False)
+        # open up current opened files. (one until further notice)
+
+        if self.current_project_root is None:
+            return
+
+        current_files = self.ide_state['current_opened_files']
+        files = [
+            os.sep.join([self.current_project_root_str, current_file]) for current_file in current_files
+        ]
+        current_index = self.ide_state['selected_tab']
+        number_before_missing = 0
+        for i, f in enumerate(files):
+            if os.path.exists(f):
+                self.open_file(f)
+            elif i <= current_index:
+                # counts number missing before the 'selected' so we can more closely find which tab to open to.
+                number_before_missing += 1
+        current_index -= number_before_missing
+        # makes sure current index is in range 0 <= index < number of tabs
+        current_index = max(0, min(current_index, len(self.file_tabs.tabs.keys()) - 1))
+        self.file_tabs.setCurrentIndex(current_index)
+        if len(self.file_tabs.tabs) == 1:
+            # no swapping took place so after this file opens, save to temp
+            self.file_tabs.save_to_temp(0)
+
+    def set_up_toolbar(self):
+        self.toolbar = QToolBar("Custom IDE Toolbar", self)
+
+        run_button = QPushButton("Run")
+        run_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        run_button.clicked.connect(self.run_function)
+
+        save_button = QPushButton("Save")
+        save_button.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
+        save_button.clicked.connect(self.save_file)
+
+        cloc_button = QPushButton("CLOC")
+        cloc_button.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
+        cloc_button.clicked.connect(self.perform_cloc)
+
+        self.toolbar.addWidget(run_button)
+        self.toolbar.addWidget(save_button)
+        self.toolbar.addWidget(cloc_button)
+
+        tool_bar_area = {
+            "top": Qt.TopToolBarArea,
+            "bottom": Qt.BottomToolBarArea,
+            "left": Qt.LeftToolBarArea,
+            "right": Qt.RightToolBarArea,
+        }[self.ide_state.get('tool_bar_position', "top")]
+
+        self.addToolBar(tool_bar_area, self.toolbar)
+
     def set_up_menu_bar(self, shortcuts):
         """ Set up the menu bar with all the options. """
         # FILE MENU
@@ -112,10 +287,15 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         save_file_action.setShortcut(shortcuts.get("save", "Ctrl+S"))
         save_file_action.triggered.connect(self.save_file)
 
-        # set Ctrl-Shift-O to be the close shortcut.
+        # set Ctrl-Shift-O to be the open project shortcut.
         open_project_action = QAction("Open Project", self)
         open_project_action.setShortcut(shortcuts.get("open_project", "Ctrl+Shift+O"))
         open_project_action.triggered.connect(self.open_project)
+
+        # set Ctrl-Shift-W to be the close project shortcut.
+        close_project_action = QAction("Close Project", self)
+        close_project_action.setShortcut(shortcuts.get("close_project", "Ctrl+Shift+W"))
+        close_project_action.triggered.connect(self.close_project)
 
         focus_search_bar_action = QAction("Search Files", self)
 
@@ -132,7 +312,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         ])
         file_menu.addSeparator()
         file_menu.addActions([
-            open_project_action
+            open_project_action,
+            close_project_action
         ])
         file_menu.addSeparator()
         file_menu.addActions([
@@ -258,175 +439,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.search_bar = SearchBar(self)
         self.menu_bar.setCornerWidget(self.search_bar, Qt.TopRightCorner)
 
-    def set_up_toolbar(self):
-        self.toolbar = QToolBar("Custom IDE Toolbar", self)
-
-        run_button = QPushButton("Run")
-        run_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        run_button.clicked.connect(self.run_function)
-
-        save_button = QPushButton("Save")
-        save_button.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
-        save_button.clicked.connect(self.save_file)
-
-        cloc_button = QPushButton("CLOC")
-        cloc_button.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
-        cloc_button.clicked.connect(self.perform_cloc)
-
-        self.toolbar.addWidget(run_button)
-        self.toolbar.addWidget(save_button)
-        self.toolbar.addWidget(cloc_button)
-
-        tool_bar_area = {
-            "top": Qt.TopToolBarArea,
-            "bottom": Qt.BottomToolBarArea,
-            "left": Qt.LeftToolBarArea,
-            "right": Qt.RightToolBarArea,
-        }[self.ide_state.get('tool_bar_position', "top")]
-
-        self.addToolBar(tool_bar_area, self.toolbar)
-
-    def set_up_project_viewer(self):
-        self.model.setRootPath('')
-        self.tree.doubleClicked.connect(self.open_file)
-
-        # Set the model of the view.
-        self.tree.setModel(self.model)
-        for i in range(1, self.tree.model().columnCount()):
-            self.tree.header().hideSection(i)
-
-        # Set the root index of the view as the user's home directory.
-        proj_dir = self.ide_state['project_dir']
-        proj_dir = os.path.expanduser(proj_dir)
-        if not os.path.exists(proj_dir):
-            proj_dir = self.ide_state['default_project_dir']
-            proj_dir = os.path.expanduser(proj_dir)
-        assert os.path.exists(proj_dir), "Default Project Folder does not exist."
-
-        self.tree.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
-        self.current_project_root = proj_dir.split(os.sep)
-        self.current_project_root_str = proj_dir
-        self.tree.setAnimated(False)
-        self.tree.setIndentation(20)
-        self.tree.setSortingEnabled(True)
-        self.tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
-
-    def set_up_layout(self):
-        file_box_layout = QGridLayout()
-        file_box_layout.addWidget(self.tree, 0, 0, 1, 1)
-        file_box_layout.setColumnStretch(0, 1)
-        file_box_layout.setRowStretch(0, 1)
-        self.file_box.setLayout(file_box_layout)
-        layout = QGridLayout()
-        layout.addWidget(self.button_widget, 0, 0, 2, 1)
-        layout.addWidget(self.file_box, 0, 1, 2, 1)
-        layout.addWidget(self.file_tabs, 0, 2, 1, 1)
-        layout.addWidget(self.code_window, 1, 2, 1, 1)
-        layout.setColumnStretch(0, 0)  # make button widget small
-        layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
-        layout.setColumnStretch(2, 5)  # make code window larger
-        layout.setRowStretch(1, 1)
-        self.grid_layout = layout
-        central_widget_holder = QWidget()
-        central_widget_holder.setLayout(layout)
-        self.setCentralWidget(central_widget_holder)
-
-    def set_up_from_save_state(self):
-        # put default before opening files
-        self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
-        self.code_window.setEnabled(False)
-        # open up current opened files. (one until further notice)
-        current_files = self.ide_state['current_opened_files']
-        files = [
-            os.sep.join([self.current_project_root_str, current_file]) for current_file in current_files
-        ]
-        current_index = self.ide_state['selected_tab']
-        number_before_missing = 0
-        for i, f in enumerate(files):
-            if os.path.exists(f):
-                self.open_file(f)
-            elif i <= current_index:
-                # counts number missing before the 'selected' so we can more closely find which tab to open to.
-                number_before_missing += 1
-        current_index -= number_before_missing
-        # makes sure current index is in range 0 <= index < number of tabs
-        current_index = max(0, min(current_index, len(self.file_tabs.tabs.keys()) - 1))
-        self.file_tabs.setCurrentIndex(current_index)
-        if len(self.file_tabs.tabs) == 1:
-            # no swapping took place so after this file opens, save to temp
-            self.file_tabs.save_to_temp(0)
-
-    def set_style_sheet(self):
-        # set global style sheet
-        bwc = self.ide_state['background_window_color']
-        fwc = self.ide_state['foreground_window_color']
-
-        lighter_factor = 1.2
-        darker_factor = 2
-        lbwc = "#313131"
-        dbwc = "#1e1e1e"
-
-        m = re.match("#(..)(..)(..)", bwc)
-
-        if m is not None:
-            r, g, b = m.groups()
-            r = int(r, 16) / 255
-            g = int(g, 16) / 255
-            b = int(b, 16) / 255
-            h, s, v = rgb_to_hsv(r, g, b)
-
-            vl = min(1.0, lighter_factor * v)
-            vd = min(1.0, darker_factor * v)
-
-            r, g, b = hsv_to_rgb(h, s, vl)
-            r = hex(int(r * 255))[2:].zfill(2)
-            g = hex(int(g * 255))[2:].zfill(2)
-            b = hex(int(b * 255))[2:].zfill(2)
-            lbwc = f"#{r}{g}{b}"
-
-            r, g, b = hsv_to_rgb(h, s, vd)
-            r = hex(int(r * 255))[2:].zfill(2)
-            g = hex(int(g * 255))[2:].zfill(2)
-            b = hex(int(b * 255))[2:].zfill(2)
-            dbwc = f"#{r}{g}{b}"
-
-        self.setStyleSheet(
-            "QWidget {"
-            f"  background-color: {bwc};  color: {fwc};"
-            "}"
-            ""
-            "QToolTip {"
-            f"  background-color: {bwc};  color: {fwc};"
-            "}"
-            "QMainWindow {"
-            f"  background-color: {bwc};  color: {fwc};"
-            "}"
-            "QMenuBar {"
-            f"  background-color: {lbwc};  color: {fwc};"
-            "}"
-            "QMenuBar::item {"
-            f"   background-color: {lbwc};  color: {fwc}; "
-            "}"
-            "QMenuBar::item::selected { "
-            f"   background-color: {dbwc}; "
-            "}"
-            "QMenu { "
-            f"   background-color: {lbwc};  color: {fwc}; border: 1px solid {dbwc};"
-            "}"
-            "QMenu::item::selected { "
-            f"   background-color: {dbwc}; "
-            "}"
-        )
-
-    def set_up_file_editor(self):
-        self.code_window.installEventFilter(self)
-        font_name = self.ide_state.get('editor_font_family', "Courier New")
-        font_size = self.ide_state.get('editor_font_size', 12)
-        backup_font = QFont("Courier New", 12)
-        q = QFont(font_name, font_size)
-        qfi = QFontInfo(q)
-        self.code_window.setFont(q if font_name == qfi.family() else backup_font)
-
     # Utility functions
 
     def _load_code(self, text):
@@ -466,18 +478,23 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         dial.exec()
 
     def before_close(self):
-        files_to_reopen = []
-        current_root_len = len(self.current_project_root_str) + 1
-        for file in self.current_opened_files:
-            # should be unnecessary, but for now
-            assert file.startswith(self.current_project_root_str)
-            file_header = file[current_root_len:]
-            files_to_reopen.append(file_header)
+        if self.current_project_root is not None:
+            files_to_reopen = []
+            current_root_len = len(self.current_project_root_str) + 1
+            for file in self.current_opened_files:
+                # should be unnecessary, but for now
+                assert file.startswith(self.current_project_root_str)
+                file_header = file[current_root_len:]
+                files_to_reopen.append(file_header)
 
-        files_to_reopen.sort(key=lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name]))
+            files_to_reopen.sort(key=lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name]))
 
-        self.ide_state['current_opened_files'] = files_to_reopen
-        self.ide_state['project_dir'] = self.current_project_root_str.replace(os.path.expanduser('~'), '~', 1)
+            self.ide_state['current_opened_files'] = files_to_reopen
+            self.ide_state['project_dir'] = self.current_project_root_str.replace(os.path.expanduser('~'), '~', 1)
+        else:
+            self.ide_state['current_opened_files'] = []
+            self.ide_state['project_dir'] = None
+
         self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
         self.ide_state['file_box_hidden'] = self.file_box.isHidden()
         self.ide_state['tool_bar_hidden'] = self.toolbar.isHidden()
@@ -501,6 +518,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         open("ide_state.json", 'w').write(json_str)
 
     def save_before_closing(self):
+        if self.current_project_root is None:
+            return
+
         # save the file currently looking at first.
         if self.file_tabs.tabs:
             self.file_tabs.save_to_temp(self.file_tabs.currentIndex())
@@ -628,12 +648,21 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         options_ = QFileDialog.Options()
         options_ |= QFileDialog.DontUseNativeDialog
         options_ |= QFileDialog.ShowDirsOnly
-        dial = QFileDialog()
-        dial.setDirectory(self.ide_state.get("projects_folder", os.path.expanduser("~")))
+        dial = QFileDialog(self)
+        dial.setFileMode(QFileDialog.Directory)
 
-        project_to_open = dial.getExistingDirectory(self, "Open Project", "", options=options_)
+        directory_to_start = self.ide_state.get("projects_folder", "~")
+        directory_to_start = os.path.expanduser(directory_to_start)
+        if not directory_to_start.endswith(os.sep):
+            directory_to_start += os.sep
 
-        if project_to_open == os.path.expanduser(self.ide_state['project_dir']):
+        project_to_open = dial.getExistingDirectory(self,
+                                                    "Open Project",
+                                                    directory=directory_to_start,
+                                                    options=options_)
+
+        if self.ide_state['project_dir'] is not None and \
+                project_to_open == os.path.expanduser(self.ide_state['project_dir']):
             self.statusBar().showMessage("Project already open")
         else:
             # save the files before closing.
@@ -645,6 +674,25 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             self.set_up_project_viewer()
             self.file_tabs.reset_tabs()
             self.search_bar.set_data()
+
+            self.tree.setEnabled(True)
+
+    def close_project(self):
+        if self.current_project_root is None:
+            return
+
+        while self.file_tabs.tabs:
+            self.close_file()
+
+        # set project to none
+        self.current_project_root = None
+        self.current_project_root_str = None
+        self.ide_state['project_dir'] = None
+
+        self.model.setRootPath('')
+        self.tree.setRootIndex(self.model.index(QDir.cleanPath(os.sep)))
+
+        self.tree.setEnabled(False)
 
     # Run functions
 
@@ -716,10 +764,11 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         return QWidget.eventFilter(self, q_object, event)
 
     def closeEvent(self, a0):
+        if self.current_project_root is None:
+            return
+
         close_after = self.save_before_closing()
-        if close_after:
-            QMainWindow.closeEvent(self, a0)
-        else:
+        if not close_after:
             a0.ignore()
 
 
