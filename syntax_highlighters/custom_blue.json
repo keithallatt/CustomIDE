@@ -1,5 +1,5 @@
 {
-    "keyword": ["#0f7e9b"],
+    "keyword": ["#2f8eab"],
     "operator": ["white"],
     "brace": ["white"],
     "builtins": ["#a2eae0"],
@@ -8,7 +8,7 @@
     "string2": ["#bcb8ce", "bold"],
     "comment": ["#808080", "italic"],
     "self": ["#917898"],
-    "numbers": ["#d5ddef"],
+    "numbers": ["#a5cdef"],
     "dunder": ["#a2eae0"],
     "kwargs": ["#f9acbb"],
     "todo": ["#4790ba", "italic"],

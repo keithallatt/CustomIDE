@@ -2,7 +2,6 @@
 Sample main, sample change
 """
 
-
 class Car:
     def __init__(self):
         self.speed = 0

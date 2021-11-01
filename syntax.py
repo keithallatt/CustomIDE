@@ -90,12 +90,12 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         super().__init__(parent)
 
         # things for like f"thing {var}" or r"raw string"
-        string_prefix_regex = r"(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF|b|B|br|Br|bR|BR|rb|rB|Rb|RB)?"
+        self.string_prefix_regex = r"(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF|b|B|br|Br|bR|BR|rb|rB|Rb|RB)?"
         fstring_prefix_regex = r"(f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)"
 
         # Multi-line strings (expression, flag, style)
-        self.tri_single = (QtCore.QRegExp(string_prefix_regex + "'''"), 1, STYLES['string2'])
-        self.tri_double = (QtCore.QRegExp(string_prefix_regex + '"""'), 2, STYLES['string2'])
+        self.tri_single = (QtCore.QRegExp(self.string_prefix_regex + "'''"), 1, STYLES['string2'])
+        self.tri_double = (QtCore.QRegExp(self.string_prefix_regex + '"""'), 2, STYLES['string2'])
 
         self.triple_quotes_within_strings = []
 
@@ -128,13 +128,14 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             # 'self'
             (r'\bself\b', 0, STYLES['self']),
 
+
+            # dunder methods. place earlier so it gets overridden by other rules.
+            (r'__[a-zA-z](\w)*__', 0, STYLES['dunder']),
+
             # 'def' followed by an identifier
             (r'\bdef\b\s*(\w+)', 1, STYLES['defclass']),
             # 'class' followed by an identifier
             (r'\bclass\b\s*(\w+)', 1, STYLES['defclass']),
-
-            # dunder methods. place earlier so it gets overridden by other rules.
-            (r'__[a-zA-z](\w)*__', 0, STYLES['dunder']),
 
             # Numeric literals
             (r'\b[+-]?[0-9]+[lL]?\b', 0, STYLES['numbers']),
@@ -142,9 +143,9 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0, STYLES['numbers']),
 
             # Double-quoted string, possibly containing escape sequences
-            (string_prefix_regex + r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
+            (self.string_prefix_regex + r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
             # Single-quoted string, possibly containing escape sequences
-            (string_prefix_regex + r"'[^'\\]*(\\.[^'\\]*)*'", 0, STYLES['string']),
+            (self.string_prefix_regex + r"'[^'\\]*(\\.[^'\\]*)*'", 0, STYLES['string']),
 
             # From '#' until a newline
             (r'#[^\n]*', 0, STYLES['comment']),
@@ -157,6 +158,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             # f-string insides. (with { and } )
 
             (fstring_prefix_regex + r'"[^"]*"', 'f-strings', STYLES['keyword']),
+            (fstring_prefix_regex + r"'[^']*'", 'f-strings', STYLES['keyword']),
 
             # (fstring_prefix_regex + r'"[^\"]*(\{[^\}]*\})[^\"]*\"', 'all', STYLES['keyword']),
             # (fstring_prefix_regex + r"'[^\']*(\{[^\}]*\})[^\']*\'", 'all', STYLES['keyword']),
@@ -224,6 +226,30 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                     for b in brace_list:
                         self.setFormat(beginning_index + b[0], b[1] - b[0] + 1, STYLES['keyword'])
                         self.setFormat(beginning_index + b[0] + 1, b[1] - b[0] - 1, STYLES['operator'])
+
+                        # format the insides of f-strings.
+                        for expression2, nth2, format2 in self.rules:
+                            if expression2.pattern()[-1] in "\"'":
+                                continue
+
+                            if nth2 == 'f-strings':
+                                continue
+
+                            index2 = expression2.indexIn(text, 0)
+                            while index2 >= 0:
+                                # skipping triple quotes within strings
+                                if index2 in self.triple_quotes_within_strings:
+                                    index2 += 1
+                                    expression2.indexIn(text, index2)
+                                    continue
+
+                                # We actually want the index of the nth match
+                                index2 = expression2.pos(nth2)
+                                length2 = len(expression2.cap(nth2))
+
+                                if index2 > b[0] and length2 <= b[1] - b[0]:
+                                    self.setFormat(index2, length2, format2)
+                                index2 = expression2.indexIn(text, index2 + length2)
 
                 continue
             while index >= 0:
