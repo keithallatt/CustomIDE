@@ -14,15 +14,16 @@ Code has been modified to fit specific needs / wants.
 import os
 import re
 import tempfile
-import syntax
 from json import loads
 
-from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal
-from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
+from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
+from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
                              QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
                              QLineEdit, QCompleter)
+
+import syntax
 
 
 class RotatedButton(QPushButton):
@@ -549,9 +550,12 @@ class CTreeView(QTreeView):
             if not directory_path.endswith(os.sep):
                 directory_path += os.sep
             for f in os.listdir(directory_path):
-                files_in_directory.append(directory_path + f)
                 if os.path.isdir(directory_path + f):
                     files_in_directory += get_files(directory_path + f)
+                elif os.path.isfile(directory_path + f):
+                    files_in_directory.append(directory_path + f)
+                else:
+                    print(f"WTF is '{directory_path+f}'")
             return files_in_directory
 
         files = get_files(self.application.current_project_root_str)
@@ -590,33 +594,64 @@ class SaveFilesOnCloseDialog(QDialog):
 
 
 class SearchBar(QLineEdit):
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.application = parent
 
-        self.completer = None
+        self.autocomplete_model = QStandardItemModel()
+        self.completer = QCompleter()
+        self.completer.setMaxVisibleItems(5)
+        self.completer.setModel(self.autocomplete_model)
+
+        bgc = self.application.ide_state.get("background_window_color", "#333333")
+        fgc = self.application.ide_state.get("foreground_window_color", "#aaaaaa")
+
+        self.completer.popup().setStyleSheet(
+            f"background-color: {bgc};"
+            f"color: {fgc};"
+        )
+        self.setCompleter(self.completer)
         self.set_data()
+
+        self.returnPressed: pyqtBoundSignal
+        self.returnPressed.connect(self.entered)
+        self.completer.activated.connect(self.activated)
 
     def set_data(self):
         files = self.application.tree.get_files_as_strings()
-        data = list(filter(lambda x: x.startswith(self.text()), files))
 
-        self.completer = QCompleter(data)
-        self.completer.setMaxVisibleItems(5)
-        self.setCompleter(self.completer)
+        while self.autocomplete_model.rowCount() > 0:
+            self.autocomplete_model.takeRow(0)
 
-    def keyPressEvent(self, a0):
-        if a0.key() == Qt.Key_Return or a0.key() == Qt.Key_Enter:
-            print(self.text())
+        for f in files:
+            self.autocomplete_model.appendRow(QStandardItem(f))
 
-            fp = self.application.current_project_root_str
-            if not fp.endswith(os.sep):
-                fp += os.sep
-            fp += self.text()
-            if os.path.exists(fp) and os.path.isfile(fp):
-                self.application.open_file(filepath=fp)
-            self.setText("")
-            self.application.code_window.setFocus()
+    def activated(self):
+        fp = self.application.current_project_root_str
+        if not fp.endswith(os.sep):
+            fp += os.sep
+        fp_l = self.text()
+        if os.path.exists(fp + fp_l) and os.path.isfile(fp + fp_l):
+            self.application.open_file(filepath=fp + fp_l)
 
-        return QLineEdit.keyPressEvent(self, a0)
+        self.setText("")
+        self.application.code_window.setFocus()
 
+    def entered(self):
+        self.setText(self.completer.currentCompletion())
+        self.activated()
+
+    def next_completion(self):
+        index = self.completer.currentIndex()
+        self.completer.popup().setCurrentIndex(index)
+        start = self.completer.currentRow()
+        if not self.completer.setCurrentRow(start + 1):
+            self.completer.setCurrentRow(0)
+
+    def event(self, event):
+        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Tab:
+            self.next_completion()
+            return True
+
+        return super().event(event)

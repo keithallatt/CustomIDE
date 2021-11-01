@@ -13,7 +13,7 @@ TODO:
  - add q-thread or something for linting
  - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
      another click
- - search in file explorer
+ - New project button
 
 """
 import os
@@ -88,8 +88,11 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         # right at the end, grab focus to the code editor
         self.code_window.setFocus()
 
+    # Setup Functions
+
     def set_up_menu_bar(self, shortcuts):
-        # todo: add stuff to menus
+        """ Set up the menu bar with all the options. """
+        # FILE MENU
         file_menu = self.menu_bar.addMenu('&File')
 
         # set Ctrl-N to be the new file shortcut.
@@ -112,12 +115,29 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         open_project_action.setShortcut(shortcuts.get("open_project", "Ctrl+Shift+O"))
         open_project_action.triggered.connect(self.open_project)
 
+        focus_search_bar_action = QAction("Search Files", self)
+
+        def focus_search_bar():
+            self.search_bar.setFocus()
+
+        focus_search_bar_action.setShortcut(shortcuts.get("search_files", "Ctrl+Shift+L"))
+        focus_search_bar_action.triggered.connect(focus_search_bar)
+
         file_menu.addActions([
             new_file_action,
             close_file_action,
             save_file_action,
+        ])
+        file_menu.addSeparator()
+        file_menu.addActions([
             open_project_action
         ])
+        file_menu.addSeparator()
+        file_menu.addActions([
+            focus_search_bar_action
+        ])
+
+        # EDIT MENU
 
         edit_menu = self.menu_bar.addMenu('&Edit')
 
@@ -149,9 +169,12 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             redo_action
         ])
 
+        # VIEW MENU
+
         view_menu = self.menu_bar.addMenu('&View')
 
         show_tool_bar_action = QAction("Show Toolbar", self)
+        show_tool_bar_action.setShortcut(shortcuts.get("show_toolbar", "Ctrl+Alt+Shift+T"))
         show_tool_bar_action.setCheckable(True)
 
         def show_hide_toolbar():
@@ -170,6 +193,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             show_tool_bar_action.setChecked(True)
 
         show_files_action = QAction("Show Files", self)
+        show_files_action.setShortcut(shortcuts.get("show_toolbar", "Ctrl+Alt+Shift+F"))
         show_files_action.setCheckable(True)
 
         def show_hide_files_widget():
@@ -192,6 +216,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         view_menu.addAction(show_tool_bar_action)
         view_menu.addAction(show_files_action)
 
+        # RUN MENU
+
         run_menu = self.menu_bar.addMenu('&Run')
 
         # set Ctrl-R to be the run shortcut
@@ -201,15 +227,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         run_menu.addAction(run_action)
 
-        help_menu = self.menu_bar.addMenu('&Help')
-
-        help_action = QAction("Help", self)
-        help_action.setShortcut("Ctrl+Shift+H")
-        # help_action.triggered.connect(...)
-
-        help_menu.addAction(help_action)
-
-        ######
+        # SEARCH BAR
         # set up search bar on right hand side.
 
         self.search_bar = SearchBar(self)
@@ -222,7 +240,12 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         run_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         run_button.clicked.connect(self.run_function)
 
+        save_button = QPushButton("Save")
+        save_button.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
+        save_button.clicked.connect(self.save_file)
+
         self.toolbar.addWidget(run_button)
+        self.toolbar.addWidget(save_button)
         self.addToolBar(self.toolbar)
 
     def set_up_project_viewer(self):
@@ -249,11 +272,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.tree.setIndentation(20)
         self.tree.setSortingEnabled(True)
         self.tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
-
-    def focus_file_explorer(self):
-        self.tree.setFocus()
-        i = self.tree.selectionModel().currentIndex()
-        self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def set_up_layout(self):
         file_box_layout = QGridLayout()
@@ -371,42 +389,110 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         qfi = QFontInfo(q)
         self.code_window.setFont(q if font_name == qfi.family() else backup_font)
 
-    def focusNextPrevChild(self, _: bool) -> bool:
-        """ Filter for focusing other widgets. Prevents this. """
-        # should prevent focus switching
-        # parameter 'next' renamed to '_' as 'next' shadows a builtin.
-        return False
-
-    def eventFilter(self, q_object, event):
-        """
-        Prevents tab and back-tab from changing focus and also allows for control tab and control back-tab
-        (ctrl-shift-tab) to switch open tabs.
-        """
-        if event.type() == QEvent.KeyPress:
-            if event.key() == Qt.Key_Tab and event.modifiers() == Qt.ControlModifier:
-                # for tab / ctrl tab
-                self.file_tabs.next_tab()
-                return True
-
-            if event.key() == Qt.Key_Backtab and event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
-                # for ctrl shift tab
-                self.file_tabs.previous_tab()
-                return True
-
-        return QWidget.eventFilter(self, q_object, event)
-
-    def closeEvent(self, a0):
-        close_after = self.save_before_closing()
-        if close_after:
-            QMainWindow.closeEvent(self, a0)
-        else:
-            a0.ignore()
+    # Utility functions
 
     def _load_code(self, text):
         self.code_window.setPlainText(text)
 
     def _get_code(self):
         return self.code_window.getPlainText()
+
+    def focus_file_explorer(self):
+        self.tree.setFocus()
+        i = self.tree.selectionModel().currentIndex()
+        self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
+
+    def perform_lint(self):
+        if self.current_opened_file is None:
+            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
+        else:
+            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
+
+        self.linting_results = lint_results
+        self.code_window.linting_results = lint_results
+
+    def before_close(self):
+        files_to_reopen = []
+        current_root_len = len(self.current_project_root_str) + 1
+        for file in self.current_opened_files:
+            # should be unnecessary, but for now
+            assert file.startswith(self.current_project_root_str)
+            file_header = file[current_root_len:]
+            files_to_reopen.append(file_header)
+
+        files_to_reopen.sort(key=lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name]))
+
+        self.ide_state['current_opened_files'] = files_to_reopen
+        self.ide_state['project_dir'] = self.current_project_root_str.replace(os.path.expanduser('~'), '~', 1)
+        self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
+        self.ide_state['file_box_hidden'] = self.file_box.isHidden()
+        self.ide_state['tool_bar_hidden'] = self.toolbar.isHidden()
+
+        size = self.size()
+        position = self.pos()
+
+        geometry = [position.x(), position.y(), size.width(), size.height()]
+        self.ide_state['window_geometry'] = geometry
+
+        json_str = dumps(self.ide_state, indent=2)
+        open("ide_state.json", 'w').write(json_str)
+
+    def save_before_closing(self):
+        # todo: set option to ask in ide_state maybe?
+
+        # save the file currently looking at first.
+        if self.file_tabs.tabs:
+            self.file_tabs.save_to_temp(self.file_tabs.currentIndex())
+
+        proj_root = self.current_project_root_str + os.sep
+        unsaved_files = []
+        save_from = dict()
+        for k, v in self.file_tabs.temp_files.items():
+            file = proj_root + k
+            if open(file, 'r').read() != open(v, 'r').read():
+                unsaved_files.append(k)
+                save_from[file] = v
+
+        if unsaved_files:
+            save_files_dialog = SaveFilesOnCloseDialog(self, unsaved_files)
+            save_files_dialog.exec()
+
+            if save_files_dialog.response == "Cancel" or save_files_dialog.response is None:
+                return False
+
+            if save_files_dialog.response == "Yes":
+                for s_to, s_from in save_from.items():
+                    file_contents = open(s_from, 'r').read()
+                    open(s_to, 'w').write(file_contents)
+
+        return True
+
+    # File functions
+
+    def new_file(self):
+        # make new file:
+        options_ = QFileDialog.Options()
+        options_ |= QFileDialog.DontUseNativeDialog
+        options_ |= QFileDialog.ShowDirsOnly
+        dial = QFileDialog()
+        dial.setDirectory(self.current_project_root_str)
+        dial.setDefaultSuffix("*.py")
+        filename, _ = dial.getSaveFileName(self, "Save file", "",
+                                           "Python Files (*.py)", options=options_)
+        if filename:
+            filename: str
+            last_part = filename.split(os.sep)[-1]
+            if '.' in last_part:
+                # ensure extension is '.py' so all files are python files.
+                pass
+            else:
+                filename += ".py"
+            # actually write to the file.
+            open(filename, 'a').close()
+            self.open_file(filename)
+            self.search_bar.set_data()
+        else:
+            return
 
     def open_file(self, filepath: str = None):
         # if used for shortcut
@@ -451,6 +537,31 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.file_tabs.open_tab(filename)
         self.code_window.setEnabled(True)
 
+    def save_file(self):
+        if not self.current_opened_files:
+            return
+
+        try:
+            file_path_to_save = self.current_project_root_str, self.file_tabs.current_file_selected
+            file_path_to_save = os.sep.join(file_path_to_save)
+            open(file_path_to_save, 'w').write(self.code_window.toPlainText())
+            self.statusBar().showMessage(f"Saved file to \"{file_path_to_save}\"", 3000)
+        except (OSError, FileNotFoundError, IsADirectoryError):
+            self.statusBar().showMessage("Could not save file.", 5000)
+
+    def close_file(self):
+        next_selected, old_name = self.file_tabs.close_tab()
+        self.file_tabs.setCurrentIndex(next_selected)
+        if next_selected == -1 or not self.current_opened_files:
+            self.highlighter = None
+            self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
+            self.code_window.setEnabled(False)
+
+    # Project functions
+
+    def new_project(self):
+        pass
+
     def open_project(self):
         options_ = QFileDialog.Options()
         options_ |= QFileDialog.DontUseNativeDialog
@@ -473,46 +584,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             self.file_tabs.reset_tabs()
             self.search_bar.set_data()
 
-    def save_file(self):
-        if not self.current_opened_files:
-            return
-
-        file_path_to_save = self.current_project_root_str, self.file_tabs.current_file_selected
-        file_path_to_save = os.sep.join(file_path_to_save)
-        open(file_path_to_save, 'w').write(self.code_window.toPlainText())
-
-    def close_file(self):
-        next_selected, old_name = self.file_tabs.close_tab()
-        self.file_tabs.setCurrentIndex(next_selected)
-        if next_selected == -1 or not self.current_opened_files:
-            self.highlighter = None
-            self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
-            self.code_window.setEnabled(False)
-
-    def new_file(self):
-        # make new file:
-        options_ = QFileDialog.Options()
-        options_ |= QFileDialog.DontUseNativeDialog
-        options_ |= QFileDialog.ShowDirsOnly
-        dial = QFileDialog()
-        dial.setDirectory(self.current_project_root_str)
-        dial.setDefaultSuffix("*.py")
-        filename, _ = dial.getSaveFileName(self, "Save file", "",
-                                           "Python Files (*.py)", options=options_)
-        if filename:
-            filename: str
-            last_part = filename.split(os.sep)[-1]
-            if '.' in last_part:
-                # ensure extension is '.py' so all files are python files.
-                pass
-            else:
-                filename += ".py"
-            # actually write to the file.
-            open(filename, 'a').close()
-            self.open_file(filename)
-            self.search_bar.set_data()
-        else:
-            return
+    # Run functions
 
     def run_function(self):
         if not self.current_opened_files:
@@ -555,70 +627,39 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             else:
                 self.statusBar().showMessage(f"File {filename} has no extension")
 
-    def perform_lint(self):
-        if self.current_opened_file is None:
-            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
+    # Overridden functions (From QMain Window)
+
+    def focusNextPrevChild(self, _: bool) -> bool:
+        """ Filter for focusing other widgets. Prevents this. """
+        # should prevent focus switching
+        # parameter 'next' renamed to '_' as 'next' shadows a builtin.
+        return False
+
+    def eventFilter(self, q_object, event):
+        """
+        Prevents tab and back-tab from changing focus and also allows for control tab and control back-tab
+        (ctrl-shift-tab) to switch open tabs.
+        """
+        if event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Tab and event.modifiers() == Qt.ControlModifier:
+                # for tab / ctrl tab
+                self.file_tabs.next_tab()
+                return True
+
+            if event.key() == Qt.Key_Backtab and event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
+                # for ctrl shift tab
+                self.file_tabs.previous_tab()
+                return True
+
+        return QWidget.eventFilter(self, q_object, event)
+
+    def closeEvent(self, a0):
+        close_after = self.save_before_closing()
+        if close_after:
+            QMainWindow.closeEvent(self, a0)
         else:
-            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
+            a0.ignore()
 
-        self.linting_results = lint_results
-        self.code_window.linting_results = lint_results
-
-    def save_before_closing(self):
-        # todo: set option to ask in ide_state maybe?
-
-        # save the file currently looking at first.
-        if self.file_tabs.tabs:
-            self.file_tabs.save_to_temp(self.file_tabs.currentIndex())
-
-        proj_root = self.current_project_root_str + os.sep
-        unsaved_files = []
-        save_from = dict()
-        for k, v in self.file_tabs.temp_files.items():
-            file = proj_root + k
-            if open(file, 'r').read() != open(v, 'r').read():
-                unsaved_files.append(k)
-                save_from[file] = v
-
-        if unsaved_files:
-            save_files_dialog = SaveFilesOnCloseDialog(self, unsaved_files)
-            save_files_dialog.exec()
-
-            if save_files_dialog.response == "Cancel" or save_files_dialog.response is None:
-                return False
-
-            if save_files_dialog.response == "Yes":
-                for s_to, s_from in save_from.items():
-                    file_contents = open(s_from, 'r').read()
-                    open(s_to, 'w').write(file_contents)
-
-        return True
-
-    def before_close(self):
-        files_to_reopen = []
-        current_root_len = len(self.current_project_root_str) + 1
-        for file in self.current_opened_files:
-            # should be unnecessary, but for now
-            assert file.startswith(self.current_project_root_str)
-            file_header = file[current_root_len:]
-            files_to_reopen.append(file_header)
-
-        files_to_reopen.sort(key=lambda name: self.file_tabs.indexOf(self.file_tabs.tabs[name]))
-
-        self.ide_state['current_opened_files'] = files_to_reopen
-        self.ide_state['project_dir'] = self.current_project_root_str.replace(os.path.expanduser('~'), '~', 1)
-        self.ide_state['selected_tab'] = self.file_tabs.currentIndex()
-        self.ide_state['file_box_hidden'] = self.file_box.isHidden()
-        self.ide_state['tool_bar_hidden'] = self.toolbar.isHidden()
-
-        size = self.size()
-        position = self.pos()
-
-        geometry = [position.x(), position.y(), size.width(), size.height()]
-        self.ide_state['window_geometry'] = geometry
-
-        json_str = dumps(self.ide_state, indent=2)
-        open("ide_state.json", 'w').write(json_str)
 
 
 def main():
