@@ -267,14 +267,29 @@ class QCodeEditor(QPlainTextEdit):
         }
 
         if event.key() in need_to_match.keys():
-            matching_str = need_to_match[event.key()]
+            if tc.selectionStart() == tc.selectionEnd():
+                matching_str = need_to_match[event.key()]
 
-            tc.insertText(matching_str[0])
-            pos = tc.position()
-            tc.insertText(matching_str[1])
-            tc.setPosition(pos)
-            self.setTextCursor(tc)
-            return
+                tc.insertText(matching_str[0])
+                pos = tc.position()
+                tc.insertText(matching_str[1])
+                tc.setPosition(pos)
+                self.setTextCursor(tc)
+                return
+            else:
+                matching_str = need_to_match[event.key()]
+                s, e = tc.selectionStart(), tc.selectionEnd()
+
+                tc.setPosition(s)
+                tc.insertText(matching_str[0])
+                tc.setPosition(e+1)
+                tc.insertText(matching_str[1])
+
+                tc.setPosition(s+1)
+                tc.setPosition(e+1, QTextCursor.KeepAnchor)
+                self.setTextCursor(tc)
+
+                return
 
         # for matching close ), ], }
         if event.key() in matching_closing:
@@ -288,26 +303,42 @@ class QCodeEditor(QPlainTextEdit):
         if event.key() in need_to_match_strings.keys():
             matching_str = need_to_match_strings[event.key()]
 
-            tc.insertText(matching_str[0])
-            self.setTextCursor(tc)
-            pos = tc.position()
+            if tc.selectionStart() == tc.selectionEnd():
 
-            last_3 = self.toPlainText()[max(0, pos-3):pos]
-            last_3_1_before = self.toPlainText()[max(0, pos-4):pos-1]
+                tc.insertText(matching_str[0])
+                self.setTextCursor(tc)
+                pos = tc.position()
 
-            if last_3 in ["'''", '"""'] and last_3_1_before not in ["'''", '"""']:
-                tc.insertText(last_3)
-                tc.setPosition(pos)
-            else:
-                next_1 = self.toPlainText()[pos:pos+1]
-                if next_1 == matching_str[1]:
-                    tc.deleteChar()
+                last_3 = self.toPlainText()[max(0, pos-3):pos]
+                last_3_1_before = self.toPlainText()[max(0, pos-4):pos-1]
+
+                if last_3 in ["'''", '"""'] and last_3_1_before not in ["'''", '"""']:
+                    tc.insertText(last_3)
                     tc.setPosition(pos)
                 else:
-                    tc.insertText(matching_str[1])
-                    tc.setPosition(pos)
-            self.setTextCursor(tc)
-            return
+                    next_1 = self.toPlainText()[pos:pos+1]
+                    if next_1 == matching_str[1]:
+                        tc.deleteChar()
+                        tc.setPosition(pos)
+                    else:
+                        tc.insertText(matching_str[1])
+                        tc.setPosition(pos)
+                self.setTextCursor(tc)
+                return
+            else:
+                s, e = tc.selectionStart(), tc.selectionEnd()
+
+                tc.setPosition(s)
+                tc.insertText(matching_str[0])
+                tc.setPosition(e+1)
+                tc.insertText(matching_str[1])
+
+                tc.setPosition(s+1)
+                tc.setPosition(e+1, QTextCursor.KeepAnchor)
+                self.setTextCursor(tc)
+
+                return
+
 
         # if the delete key is pressed, then check for "|" or like (|)
         if event.key() == Qt.Key_Backspace:
