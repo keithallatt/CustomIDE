@@ -17,7 +17,8 @@ import tempfile
 from json import loads
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
-from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel, QStandardItem
+from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel, QStandardItem, \
+    QFont
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
                              QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
@@ -544,7 +545,6 @@ class QCodeFileTabs(QTabWidget):
         )(self.application.code_window.document())
 
 
-
 class CTreeView(QTreeView):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -575,36 +575,6 @@ class CTreeView(QTreeView):
         files = get_files(self.application.current_project_root_str)
         cprs_len = len(self.application.current_project_root_str) + 1
         return [f[cprs_len:] for f in files]
-
-
-class SaveFilesOnCloseDialog(QDialog):
-    def __init__(self, parent=None, files=None):
-        super().__init__(parent)
-
-        self.setWindowTitle("Save Before Quitting?")
-
-        q_btn = QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel
-
-        self.buttonBox = QDialogButtonBox(q_btn)
-        self.buttonBox.clicked.connect(self.button_clicked)
-
-        self.layout = QVBoxLayout()
-
-        label_string = "The following file(s) have not been saved: \n\n"
-        label_string += "\n\t".join(files)
-        label_string += "\n\nSave before quitting?"
-
-        message = QLabel(label_string)
-
-        self.layout.addWidget(message)
-        self.layout.addWidget(self.buttonBox)
-        self.setLayout(self.layout)
-
-        self.response = None
-
-    def button_clicked(self, button: QPushButton):
-        self.response = button.text().replace("&", "")  # remove mnemonic part
-        self.accept()
 
 
 class SearchBar(QLineEdit):
@@ -679,3 +649,60 @@ class SearchBar(QLineEdit):
             return True
 
         return super().event(event)
+
+
+class SaveFilesOnCloseDialog(QDialog):
+    def __init__(self, parent=None, files=None):
+        super().__init__(parent)
+
+        self.setWindowTitle("Save Before Quitting?")
+
+        q_btn = QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel
+
+        self.buttonBox = QDialogButtonBox(q_btn)
+        self.buttonBox.clicked.connect(self.button_clicked)
+
+        self.layout = QVBoxLayout()
+
+        label_string = "The following file(s) have not been saved: \n\n"
+        label_string += "\n\t".join(files)
+        label_string += "\n\nSave before quitting?"
+
+        message = QLabel(label_string)
+
+        self.layout.addWidget(message)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+        self.response = None
+
+    def button_clicked(self, button: QPushButton):
+        self.response = button.text().replace("&", "")  # remove mnemonic part
+        self.accept()
+
+
+class CLOCDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setWindowTitle("External Command 'cloc' Output")
+
+        q_btn = QDialogButtonBox.Ok
+
+        self.buttonBox = QDialogButtonBox(q_btn)
+        self.buttonBox.accepted.connect(self.accept)
+
+        self.layout = QVBoxLayout()
+        self.message_header = QLabel("Line counting for " + parent.current_project_root_str)
+        self.message = QLabel()
+        self.message.setFont(QFont("Courier New", 10))
+        self.layout.addWidget(self.message_header)
+        self.layout.addWidget(self.message)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+    def set_content(self, content):
+        content = content.split("\n")
+        content = "\n".join(content)
+
+        self.message.setText(content)

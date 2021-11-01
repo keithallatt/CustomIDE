@@ -25,8 +25,8 @@
     1489,
     885
   ],
-  "file_box_hidden": false,
+  "file_box_hidden": true,
   "tool_bar_hidden": false,
-  "tool_bar_position": "left",
+  "tool_bar_position": "top",
   "search_completion": "popup"
 }

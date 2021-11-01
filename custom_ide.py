@@ -18,6 +18,7 @@ next steps:
 """
 import os
 import subprocess
+import sh
 import sys
 import re
 from json import loads, dumps
@@ -26,9 +27,9 @@ from colorsys import rgb_to_hsv, hsv_to_rgb
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
-                             QAction, QPushButton, QStyle)
+                             QAction, QPushButton, QStyle, QDialog)
 
-from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog, SearchBar
+from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog, SearchBar, CLOCDialog
 from linting import run_linter_on_code
 
 
@@ -245,8 +246,13 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         save_button.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
         save_button.clicked.connect(self.save_file)
 
+        cloc_button = QPushButton("CLOC")
+        cloc_button.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
+        cloc_button.clicked.connect(self.perform_cloc)
+
         self.toolbar.addWidget(run_button)
         self.toolbar.addWidget(save_button)
+        self.toolbar.addWidget(cloc_button)
 
         tool_bar_area = {
             "top": Qt.TopToolBarArea,
@@ -419,6 +425,22 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.linting_results = lint_results
         self.code_window.linting_results = lint_results
+
+    def perform_cloc(self):
+        folder = self.current_project_root_str
+        command = f"cloc {folder} --by-file --exclude-dir=venv,.idea".split(" ")
+        out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = out.communicate()
+
+        # fixing bytes output (weird stuff that doesn't show up
+        # when printing, but is still there nonetheless
+        stdout = stdout.replace(b'\r', b'.\n')
+        stdout = stdout.replace(b'classified', b'       Classified')
+
+        stdout = stdout.decode("utf-8")
+        dial = CLOCDialog(self)
+        dial.set_content(stdout)
+        dial.exec()
 
     def before_close(self):
         files_to_reopen = []
