@@ -104,6 +104,9 @@ class QLineNumberArea(QWidget):
 
 
 class QCodeEditor(QPlainTextEdit):
+    ProgrammingMode = 0
+    RawTextInput = 1
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.lineNumberArea = QLineNumberArea(self)
@@ -118,7 +121,16 @@ class QCodeEditor(QPlainTextEdit):
         self.application = parent
         self.font_height = 10  # approximate until starts drawing
 
+        self.text_input_mode = QCodeEditor.RawTextInput
+
     def keyPressEvent(self, event):
+        if self.text_input_mode == QCodeEditor.RawTextInput:
+            return QPlainTextEdit.keyPressEvent(self, event)
+
+        # make sure the text input mode was not changed to anything else.
+        assert self.text_input_mode == QCodeEditor.ProgrammingMode, \
+            "Mode is neither raw text input nor programming mode."
+
         tc = self.textCursor()
 
         if event.key() == Qt.Key_1 and event.modifiers() == Qt.AltModifier:
@@ -338,7 +350,6 @@ class QCodeEditor(QPlainTextEdit):
                 self.setTextCursor(tc)
 
                 return
-
 
         # if the delete key is pressed, then check for "|" or like (|)
         if event.key() == Qt.Key_Backspace:
@@ -574,6 +585,11 @@ class QCodeFileTabs(QTabWidget):
         }.get(
             "unspecified" if '.' not in filename else filename[filename.index('.'):], lambda _: None
         )(self.application.code_window.document())
+
+        if self.application.highlighter is None:
+            self.application.code_window.text_input_mode = QCodeEditor.RawTextInput
+        else:
+            self.application.code_window.text_input_mode = QCodeEditor.ProgrammingMode
 
 
 class CTreeView(QTreeView):

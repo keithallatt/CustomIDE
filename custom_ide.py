@@ -615,6 +615,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.file_tabs.setCurrentIndex(next_selected)
         if next_selected == -1 or not self.current_opened_files:
             self.highlighter = None
+            self.code_window.text_input_mode = QCodeEditor.RawTextInput
             self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
             self.code_window.setEnabled(False)
 
