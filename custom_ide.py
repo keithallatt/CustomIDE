@@ -17,20 +17,20 @@ next steps:
 
 """
 import os
-import subprocess
-import sh
-import sys
 import re
-from json import loads, dumps
+import subprocess
+import sys
 from colorsys import rgb_to_hsv, hsv_to_rgb
+from json import loads, dumps
 
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
-                             QAction, QPushButton, QStyle, QDialog)
+                             QAction, QPushButton, QStyle)
 
 from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog, SearchBar, CLOCDialog
 from linting import run_linter_on_code
+from webbrowser import open_new_tab as open_in_browser
 
 
 class CustomIntegratedDevelopmentEnvironment(QMainWindow):
@@ -228,6 +228,29 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         run_action.triggered.connect(self.run_function)
 
         run_menu.addAction(run_action)
+
+        # HELP MENU
+
+        help_menu = self.menu_bar.addMenu("&Help")
+
+        github_repo_url = "https://github.com/keithallatt/CustomIDE"
+        # using web browser module's open_new_tab causes Gtk-Message and libGL errors, but still works (?)
+        def open_github_repo():
+            open_in_browser(github_repo_url)
+
+        def open_github_issues():
+            open_in_browser(github_repo_url + "/issues")
+
+        github_repo_action = QAction("GitHub Repo", self)
+        github_repo_action.triggered.connect(open_github_repo)
+
+        github_issues_action = QAction("Report a problem", self)
+        github_issues_action.triggered.connect(open_github_issues)
+
+        help_menu.addActions([
+            github_repo_action,
+            github_issues_action
+        ])
 
         # SEARCH BAR
         # set up search bar on right hand side.
@@ -697,7 +720,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             QMainWindow.closeEvent(self, a0)
         else:
             a0.ignore()
-
 
 
 def main():
