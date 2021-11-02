@@ -14,6 +14,7 @@ Code has been modified to fit specific needs / wants.
 import os
 import re
 import tempfile
+import syntax
 from json import loads
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
@@ -24,7 +25,8 @@ from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
                              QLineEdit, QCompleter)
 
-import syntax
+import logging
+logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 
 class RotatedButton(QPushButton):
@@ -617,7 +619,9 @@ class CTreeView(QTreeView):
                 elif os.path.isfile(directory_path + f):
                     files_in_directory.append(directory_path + f)
                 else:
-                    print(f"WTF is '{directory_path+f}'")
+                    logging.info(f"File {directory_path + f} is not dir nor file? Called with root "
+                                 f"directory {self.application.current_project_root_str}")
+
             return files_in_directory
         if self.application.current_project_root is None:
             return []

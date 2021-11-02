@@ -33,6 +33,10 @@ from wizards import NewProjectWizard
 from linting import run_linter_on_code
 from webbrowser import open_new_tab as open_in_browser
 
+from datetime import date
+import logging
+logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
+
 
 class CustomIntegratedDevelopmentEnvironment(QMainWindow):
     """
@@ -177,7 +181,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         proj_dir = self.ide_state['project_dir']
         self.tree.setEnabled(False)
         if proj_dir is not None:
-            self.tree.setEnabled(True)
             proj_dir = os.path.expanduser(proj_dir)
             if not os.path.exists(proj_dir):
                 return
@@ -185,6 +188,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             self.tree.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
             self.current_project_root = proj_dir.split(os.sep)
             self.current_project_root_str = proj_dir
+            self.tree.setEnabled(True)
 
         self.tree.setAnimated(False)
         self.tree.setIndentation(20)
@@ -461,6 +465,10 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def perform_lint(self):
+        if self.current_project_root is None:
+            self.statusBar().showMessage("No project open", 3000)
+            return
+
         if self.current_opened_file is None:
             lint_results = run_linter_on_code(code=self.code_window.toPlainText())
         else:
@@ -470,6 +478,10 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.code_window.linting_results = lint_results
 
     def perform_cloc(self):
+        if self.current_project_root is None:
+            self.statusBar().showMessage("No project open", 3000)
+            return
+
         folder = self.current_project_root_str
         command = f"cloc {folder} --by-file --exclude-dir=venv,.idea".split(" ")
         out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -627,14 +639,13 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         else:
             filename = filepath[len(root_full)+1:]
 
-        print(filename)
-
         self.current_opened_files.add(filepath)
         self.file_tabs.open_tab(filename)
         self.code_window.setEnabled(True)
 
     def save_file(self):
         if not self.current_opened_files:
+            self.statusBar().showMessage("No files open", 3000)
             return
 
         try:
@@ -724,6 +735,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def run_function(self):
         if not self.current_opened_files:
+            self.statusBar().showMessage("No files open", 3000)
             return
 
         file_path_to_run = self.current_project_root_str, self.file_tabs.current_file_selected
@@ -740,11 +752,11 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
                 file_path_to_run = self.file_tabs.save_to_temp()
 
         if file_path_to_run is None:
-            print("File path is None... issue")
+            logging.warning("File path is None: function run_function(self)")
             return
 
         if not os.path.exists(file_path_to_run):
-            print("File path not a file... potential issue.")
+            logging.warning("File specified does not exist: function run_function(self)")
             return
 
         if file_path_to_run.endswith(".py"):
@@ -813,6 +825,8 @@ def main():
     """
     Create the QApplication window and add the Custom IDE to it.
     """
+    logging.info(f"Application running on {date.today()}")
+
     app = QApplication(sys.argv)
     window = CustomIntegratedDevelopmentEnvironment()
     window.show()

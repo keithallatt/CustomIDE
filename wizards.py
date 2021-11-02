@@ -6,14 +6,15 @@ import os.path
 import subprocess
 from json import loads
 
-from PyQt5.QtWidgets import QWizard, QWizardPage, QComboBox, QVBoxLayout, QApplication, QHBoxLayout, QWidget, QLabel, \
-    QLineEdit, QCheckBox
+from PyQt5.QtWidgets import (QWizard, QWizardPage, QComboBox, QVBoxLayout, QHBoxLayout,
+                             QWidget, QLabel, QLineEdit, QCheckBox)
 
+import logging
+logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 WIZARD_DEBUG = True
 
-MAIN_PY_DEFAULT = """
-# This is a sample Python script.
+MAIN_PY_DEFAULT = """# This is a sample Python script.
 
 # Press Ctrl-Shift-R to execute it or replace it with your code.
 
@@ -40,7 +41,6 @@ if __name__ == '__main__':
         print(x)
 
 # For more help, visit the GitHub Repository at https://github.com/keithallatt/CustomIDE
-
 """
 
 
@@ -156,10 +156,8 @@ class NewProjectPage(QWizardPage):
         assert not os.path.exists(fp), "Filepath already exists"
         assert " " not in fp, "Cannot use spaces (for time being)"
 
-        if WIZARD_DEBUG:
-            print(f"Making project at {fp}, using {env_choice}.",
-                  "Includes" if include_main else "Does not include",
-                  "main script")
+        logging.info(f"Making project at {fp}, using {env_choice}. " +
+                     ("Includes" if include_main else "Does not include") + "main script")
 
         try:
             # make dir at file path
@@ -181,7 +179,7 @@ class NewProjectPage(QWizardPage):
             custom_ide_object.open_project(project_to_open=fp)
 
             return True, fp
-        except Exception as e:
-            print(e, type(e))
+        except (FileExistsError, FileNotFoundError) as e:
+            logging.error(f"Exception of type {type(e)}.")
 
         custom_ide_object.statusBar().showMessage('Error making new project', 3000)
