@@ -29,6 +29,7 @@ from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemMode
                              QAction, QPushButton, QStyle)
 
 from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog, SearchBar, CLOCDialog
+from wizards import NewProjectWizard
 from linting import run_linter_on_code
 from webbrowser import open_new_tab as open_in_browser
 
@@ -287,6 +288,11 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         save_file_action.setShortcut(shortcuts.get("save", "Ctrl+S"))
         save_file_action.triggered.connect(self.save_file)
 
+        # set Ctrl-Shift-N to be the new project shortcut.
+        new_project_action = QAction("New Project", self)
+        new_project_action.setShortcut(shortcuts.get("new_project", "Ctrl+Shift+N"))
+        new_project_action.triggered.connect(self.new_project)
+
         # set Ctrl-Shift-O to be the open project shortcut.
         open_project_action = QAction("Open Project", self)
         open_project_action.setShortcut(shortcuts.get("open_project", "Ctrl+Shift+O"))
@@ -312,6 +318,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         ])
         file_menu.addSeparator()
         file_menu.addActions([
+            new_project_action,
             open_project_action,
             close_project_action
         ])
@@ -416,6 +423,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         github_repo_url = "https://github.com/keithallatt/CustomIDE"
         # using web browser module's open_new_tab causes Gtk-Message and libGL errors, but still works (?)
+
         def open_github_repo():
             open_in_browser(github_repo_url)
 
@@ -480,7 +488,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
     def before_close(self):
         if self.current_project_root is not None:
             files_to_reopen = []
-            current_root_len = len(self.current_project_root_str) + 1
+            current_root_len = len(self.current_project_root_str)
+            if not self.current_project_root_str.endswith(os.sep):
+                current_root_len += 1
             for file in self.current_opened_files:
                 # should be unnecessary, but for now
                 assert file.startswith(self.current_project_root_str)
@@ -612,7 +622,12 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         if os.path.isdir(filepath):
             return
 
-        filename = filepath[len(root_full)+1:]
+        if root_full.endswith(os.sep):
+            filename = filepath[len(root_full):]
+        else:
+            filename = filepath[len(root_full)+1:]
+
+        print(filename)
 
         self.current_opened_files.add(filepath)
         self.file_tabs.open_tab(filename)
@@ -642,24 +657,32 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
     # Project functions
 
     def new_project(self):
-        pass
+        wizard = NewProjectWizard(self)
+        wizard.show()
 
-    def open_project(self):
-        options_ = QFileDialog.Options()
-        options_ |= QFileDialog.DontUseNativeDialog
-        options_ |= QFileDialog.ShowDirsOnly
-        dial = QFileDialog(self)
-        dial.setFileMode(QFileDialog.Directory)
+    def open_project(self, *_, project_to_open: str = None):
+        if project_to_open is None:
+            options_ = QFileDialog.Options()
+            options_ |= QFileDialog.DontUseNativeDialog
+            options_ |= QFileDialog.ShowDirsOnly
+            dial = QFileDialog(self)
+            dial.setFileMode(QFileDialog.Directory)
 
-        directory_to_start = self.ide_state.get("projects_folder", "~")
-        directory_to_start = os.path.expanduser(directory_to_start)
-        if not directory_to_start.endswith(os.sep):
-            directory_to_start += os.sep
+            directory_to_start = self.ide_state.get("projects_folder", "~")
+            directory_to_start = os.path.expanduser(directory_to_start)
+            if not directory_to_start.endswith(os.sep):
+                directory_to_start += os.sep
 
-        project_to_open = dial.getExistingDirectory(self,
-                                                    "Open Project",
-                                                    directory=directory_to_start,
-                                                    options=options_)
+            project_to_open = dial.getExistingDirectory(self,
+                                                        "Open Project",
+                                                        directory=directory_to_start,
+                                                        options=options_)
+
+            if not project_to_open:
+                return
+
+        if not project_to_open.endswith(os.sep):
+            project_to_open += os.sep
 
         if self.ide_state['project_dir'] is not None and \
                 project_to_open == os.path.expanduser(self.ide_state['project_dir']):
@@ -670,7 +693,10 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             while self.file_tabs.tabs.keys():
                 self.close_file()
 
-            self.ide_state['project_dir'] = project_to_open.replace(os.path.expanduser("~"), "~", 1)
+            project_dir = project_to_open.replace(os.path.expanduser("~"), "~", 1)
+            if project_dir.endswith(os.sep):
+                project_dir = project_dir[:-1]
+            self.ide_state['project_dir'] = project_dir
             self.set_up_project_viewer()
             self.file_tabs.reset_tabs()
             self.search_bar.set_data()

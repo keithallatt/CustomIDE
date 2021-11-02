@@ -557,6 +557,7 @@ class QCodeFileTabs(QTabWidget):
             self.save_to_temp(self.last_tab_index)
 
         next_tab = self.tabText(index)
+
         next_temp_file = self.temp_files.get(next_tab,
                                              self.application.current_project_root_str + os.sep + next_tab)
 
@@ -575,8 +576,8 @@ class QCodeFileTabs(QTabWidget):
                     filename = k
                     break
             else:
-                print("No file open or other issue")
-                return
+                # should then go on to set the highlighter to None and then set the raw text input mode.
+                filename = "unspecified"
 
         # set appropriate syntax highlighter
         self.application.highlighter = {
