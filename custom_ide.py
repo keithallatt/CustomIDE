@@ -8,12 +8,12 @@ Count lines with:
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
 
 next steps:
- - add venv to projects if desired (could be useful, and is recommended practice)
- - add option for extensibility modules (like a folder of 'mods' that are auto integrated)
  - add q-thread or something for linting
  - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
      another click
- - New project button
+ - add pip installation support for venv and stuff :)
+ - git stuff maybe?
+ - app themes (like syntax highlighter but for app background / foreground colors and stuff)
 
 """
 import os
@@ -33,7 +33,7 @@ from wizards import NewProjectWizard
 from linting import run_linter_on_code
 from webbrowser import open_new_tab as open_in_browser
 
-from datetime import date
+import datetime
 import logging
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
@@ -159,6 +159,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             "}"
         )
 
+        logging.info("Set up style sheet")
+
     def set_up_file_editor(self):
         self.code_window.installEventFilter(self)
         font_name = self.ide_state.get('editor_font_family', "Courier New")
@@ -167,6 +169,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         q = QFont(font_name, font_size)
         qfi = QFontInfo(q)
         self.code_window.setFont(q if font_name == qfi.family() else backup_font)
+
+        logging.info("Set up file editor / code editor")
 
     def set_up_project_viewer(self):
         self.model.setRootPath('')
@@ -195,6 +199,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.tree.setSortingEnabled(True)
         self.tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
+        logging.info("Set up project viewer")
+
     def set_up_layout(self):
         file_box_layout = QGridLayout()
         file_box_layout.addWidget(self.tree, 0, 0, 1, 1)
@@ -214,6 +220,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         central_widget_holder = QWidget()
         central_widget_holder.setLayout(layout)
         self.setCentralWidget(central_widget_holder)
+
+        logging.info("Set up layout")
 
     def set_up_from_save_state(self):
         # put default before opening files
@@ -244,6 +252,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             # no swapping took place so after this file opens, save to temp
             self.file_tabs.save_to_temp(0)
 
+        logging.info("Restored savestate")
+
     def set_up_toolbar(self):
         self.toolbar = QToolBar("Custom IDE Toolbar", self)
 
@@ -271,6 +281,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         }[self.ide_state.get('tool_bar_position', "top")]
 
         self.addToolBar(tool_bar_area, self.toolbar)
+        logging.info("Set up tool bar")
 
     def set_up_menu_bar(self, shortcuts):
         """ Set up the menu bar with all the options. """
@@ -387,7 +398,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             show_tool_bar_action.setChecked(True)
 
         show_files_action = QAction("Show Files", self)
-        show_files_action.setShortcut(shortcuts.get("show_toolbar", "Ctrl+Alt+Shift+F"))
+        show_files_action.setShortcut(shortcuts.get("show_files", "Ctrl+Alt+Shift+F"))
         show_files_action.setCheckable(True)
 
         def show_hide_files_widget():
@@ -451,6 +462,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.search_bar = SearchBar(self)
         self.menu_bar.setCornerWidget(self.search_bar, Qt.TopRightCorner)
 
+        logging.info("Set up menu bar")
+
     # Utility functions
 
     def _load_code(self, text):
@@ -497,6 +510,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         dial.set_content(stdout)
         dial.exec()
 
+        logging.info("Performed `cloc` on project")
+
     def before_close(self):
         if self.current_project_root is not None:
             files_to_reopen = []
@@ -538,6 +553,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         json_str = dumps(self.ide_state, indent=2)
         open("ide_state.json", 'w').write(json_str)
+        logging.info("Saved savestate to file")
 
     def save_before_closing(self):
         if self.current_project_root is None:
@@ -825,13 +841,15 @@ def main():
     """
     Create the QApplication window and add the Custom IDE to it.
     """
-    logging.info(f"Application running on {date.today()}")
+    logging.info(f"Application started running: {datetime.datetime.now()}")
 
     app = QApplication(sys.argv)
     window = CustomIntegratedDevelopmentEnvironment()
     window.show()
     exit_code = app.exec_()
     window.before_close()
+    logging.info(f"Application finished running: {datetime.datetime.now()}")
+
     sys.exit(exit_code)
 
 

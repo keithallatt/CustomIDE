@@ -174,7 +174,6 @@ class NewProjectPage(QWizardPage):
                 with open(main_fp, 'w') as main_file:
                     main_file.write(MAIN_PY_DEFAULT)
 
-            # TODO: test this after figuring out the issue with the last one.
             custom_ide_object.statusBar().showMessage('Successfully made new project: ' + fp, 3000)
             custom_ide_object.open_project(project_to_open=fp)
 
