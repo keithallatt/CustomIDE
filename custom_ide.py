@@ -750,6 +750,17 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         if file_path_to_run.endswith(".py"):
             # running python
             python_bin = self.ide_state.get("python_bin_location", "/usr/bin/python3")
+
+            # look for venv
+            venv_file_path = self.current_project_root_str
+            if not venv_file_path.endswith(os.sep):
+                venv_file_path += os.sep
+
+            venv_file_path += os.sep.join(['venv', 'bin', 'python3'])
+
+            if os.path.exists(venv_file_path):
+                python_bin = venv_file_path
+
             process_call = ['gnome-terminal', '--', python_bin, '-i', file_path_to_run]
             self.statusBar().showMessage(f"Running '{' '.join(process_call)}'")
             subprocess.call(process_call)
