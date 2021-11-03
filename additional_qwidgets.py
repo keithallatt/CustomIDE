@@ -405,12 +405,11 @@ class QCodeEditor(QPlainTextEdit):
         self.lineNumberArea.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
 
     def highlight_current_line(self):
-        ide_state = loads(open("ide_state.json", 'r').read())
         extra_selections = []
         if not self.isReadOnly():
             selection = QTextEdit.ExtraSelection()
             line_color = QColor()
-            line_color.setNamedColor(ide_state["line_highlight_color"])
+            line_color.setNamedColor(self.application.ide_theme["line_highlight_color"])
             line_color = line_color.lighter(85)
             line_color.setAlpha(25)
             selection.format.setBackground(line_color)
@@ -422,9 +421,9 @@ class QCodeEditor(QPlainTextEdit):
 
     def line_number_area_paint_event(self, event):
         painter = QPainter(self.lineNumberArea)
-        ide_state = self.application.ide_state
-        window_color = QColor(ide_state['background_window_color'])
-        line_color = QColor(ide_state['line_number_color'])
+        ide_theme = self.application.ide_theme
+        window_color = QColor(ide_theme['background_window_color'])
+        line_color = QColor(ide_theme['line_number_color'])
 
         painter.fillRect(event.rect(), window_color)
         block = self.firstVisibleBlock()
@@ -589,8 +588,8 @@ class QCodeFileTabs(QTabWidget):
             ".py": syntax.PythonHighlighter,
             ".json": syntax.JSONHighlighter
         }.get(
-            "unspecified" if '.' not in filename else filename[filename.index('.'):], lambda _: None
-        )(self.application.code_window.document())
+            "unspecified" if '.' not in filename else filename[filename.index('.'):], lambda *_: None
+        )(self.application.code_window.document(), self.application)
 
         if self.application.highlighter is None:
             self.application.code_window.text_input_mode = QCodeEditor.RawTextInput

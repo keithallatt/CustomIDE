@@ -27,6 +27,7 @@ def format_color(color, style=''):
 
     _format = QtGui.QTextCharFormat()
     _format.setForeground(_color)
+
     if 'bold' in style:
         _format.setFontWeight(QtGui.QFont.Bold)
     if 'italic' in style:
@@ -72,7 +73,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         '^=', '|=', '&=', '~=', '>>=', '<<='
     ]))
 
-    escape_seqences = list(map(escape, [
+    escape_sequences = list(map(escape, [
         r"\\", r"\'", r"\"", r"\n", r"\r", r"\t", r"\b", r"\f"
     ])) + [  # more general ones.
         r"\\[0-7]{3}",  # octal escape
@@ -86,9 +87,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
     # Python builtins
     built_ins = list(map(lambda x: x[0], inspect.getmembers(builtins)))
 
-    def __init__(self, parent: QtGui.QTextDocument) -> None:
+    def __init__(self, parent: QtGui.QTextDocument, ide_object) -> None:
         super().__init__(parent)
-
         # things for like f"thing {var}" or r"raw string"
         self.string_prefix_regex = r"(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF|b|B|br|Br|bR|BR|rb|rB|Rb|RB)?"
         fstring_prefix_regex = r"(f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)"
@@ -117,7 +117,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
             # gets rid of them in function definitions (returns to default editor color.)
             (r'\bdef\b\s*[a-zA-Z_][a-zA-Z_0-9]*\s*\(.*([a-zA-Z_][a-zA-Z_0-9]*)\s*=[^=].*\)', 1,
-             format_color(loads(open("ide_state.json", 'r').read())['editor_font_color']))
+             format_color(ide_object.ide_theme['foreground_window_color']))
         ]
 
         rules += [(rf'\b{b}\b', 0, STYLES['builtins'])
@@ -169,8 +169,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         ]
 
         rules += [(f'{b}', 0, STYLES['keyword'])
-                  for b in PythonHighlighter.escape_seqences]
-
+                  for b in PythonHighlighter.escape_sequences]
 
         # Build a QRegExp for each pattern
         self.rules = [(QtCore.QRegExp(pat), index, fmt)

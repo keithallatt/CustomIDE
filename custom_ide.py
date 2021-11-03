@@ -4,16 +4,16 @@ The main application.
 Count lines with:
     cloc . --by-file --exclude-dir=venv,.idea
 
--- WARNING --
+-- NOTICE --
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
 
 next steps:
- - add q-thread or something for linting
+ - add q-thread or something for linting and other slow processes.
  - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
      another click
- - add pip installation support for venv and stuff :)
  - git stuff maybe?
  - app themes (like syntax highlighter but for app background / foreground colors and stuff)
+ - settings panel
 
 """
 import os
@@ -52,6 +52,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         """ Create the widget """
         super().__init__(parent)
         self.ide_state = loads(open("ide_state.json", 'r').read())
+        self.ide_theme = loads(open("ide_themes" + os.sep + self.ide_state['ide_theme'], 'r').read())
+
         shortcuts = loads(open("shortcuts.json", 'r').read())
         self.setWindowTitle(self.ide_state.get("ide_title", "ide"))
 
@@ -100,8 +102,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def set_style_sheet(self):
         # set global style sheet
-        bwc = self.ide_state['background_window_color']
-        fwc = self.ide_state['foreground_window_color']
+        bwc = self.ide_theme['background_window_color']
+        fwc = self.ide_theme['foreground_window_color']
 
         lighter_factor = 1.2
         darker_factor = 2
@@ -164,11 +166,13 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def set_up_file_editor(self):
         self.code_window.installEventFilter(self)
-        font_name = self.ide_state.get('editor_font_family', "Courier New")
-        font_size = self.ide_state.get('editor_font_size', 12)
+        # try to get from theme, but fall back on state, and finally to Courier New 12pt
+        font_name = self.ide_theme.get('editor_font_family', self.ide_state.get('editor_font_family', "Courier New"))
+        font_size = self.ide_theme.get('editor_font_size', self.ide_state.get('editor_font_size', 12))
         backup_font = QFont("Courier New", 12)
         q = QFont(font_name, font_size)
         qfi = QFontInfo(q)
+        logging.debug(f"Font match? {font_name} v.s. {qfi.family()}: {font_name == qfi.family()}")
         self.code_window.setFont(q if font_name == qfi.family() else backup_font)
 
         logging.info("Set up file editor / code editor")
@@ -511,6 +515,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         self.code_window.linting_results = lint_results
 
     def perform_cloc(self):
+        """ run 'cloc' on the project """
         if self.current_project_root is None:
             self.statusBar().showMessage("No project open", 3000)
             return
@@ -533,6 +538,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         logging.info("Performed `cloc` on project")
 
     def pip_function(self, function, *args):
+        """ Execute a command line call in the form 'pip3 function arg1 arg2 ...' """
         if self.current_project_root is None:
             # make sure we're working only when the project root is set.
             return
