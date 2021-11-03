@@ -30,10 +30,10 @@ from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemMode
 
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog)
+
 from wizards import NewProjectWizard
 from linting import run_linter_on_code
 from webbrowser import open_new_tab as open_in_browser
-
 import datetime
 import logging
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
@@ -47,6 +47,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     NO_FILES_OPEN_TEXT = "\n\n\n\n\tNo files are currently opened.\n\t" \
                          "Double-click on a file in the side window to start editing.\n\n\n\n"
+
+    # reboot exit code.
+    EXIT_CODE_REBOOT = -123456789
 
     def __init__(self, parent=None):
         """ Create the widget """
@@ -107,8 +110,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         lighter_factor = 1.2
         darker_factor = 2
-        lbwc = "#313131"
-        dbwc = "#1e1e1e"
+        l_bg_w_c = "#313131"
+        d_bg_w_c = "#1e1e1e"
 
         m = re.match("#(..)(..)(..)", bwc)
 
@@ -126,13 +129,13 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             r = hex(int(r * 255))[2:].zfill(2)
             g = hex(int(g * 255))[2:].zfill(2)
             b = hex(int(b * 255))[2:].zfill(2)
-            lbwc = f"#{r}{g}{b}"
+            l_bg_w_c = f"#{r}{g}{b}"
 
             r, g, b = hsv_to_rgb(h, s, vd)
             r = hex(int(r * 255))[2:].zfill(2)
             g = hex(int(g * 255))[2:].zfill(2)
             b = hex(int(b * 255))[2:].zfill(2)
-            dbwc = f"#{r}{g}{b}"
+            d_bg_w_c = f"#{r}{g}{b}"
 
         self.setStyleSheet(
             "QWidget {"
@@ -146,19 +149,19 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             f"  background-color: {bwc};  color: {fwc};"
             "}"
             "QMenuBar {"
-            f"  background-color: {lbwc};  color: {fwc};"
+            f"  background-color: {l_bg_w_c};  color: {fwc};"
             "}"
             "QMenuBar::item {"
-            f"   background-color: {lbwc};  color: {fwc}; "
+            f"   background-color: {l_bg_w_c};  color: {fwc}; "
             "}"
             "QMenuBar::item::selected { "
-            f"   background-color: {dbwc}; "
+            f"   background-color: {d_bg_w_c}; "
             "}"
             "QMenu { "
-            f"   background-color: {lbwc};  color: {fwc}; border: 1px solid {dbwc};"
+            f"   background-color: {l_bg_w_c};  color: {fwc}; border: 1px solid {d_bg_w_c};"
             "}"
             "QMenu::item::selected { "
-            f"   background-color: {dbwc}; "
+            f"   background-color: {d_bg_w_c}; "
             "}"
         )
 
@@ -257,7 +260,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             # no swapping took place so after this file opens, save to temp
             self.file_tabs.save_to_temp(0)
 
-        logging.info("Restored savestate")
+        logging.info("Restored save state")
 
     def set_up_toolbar(self):
         self.toolbar = QToolBar("Custom IDE Toolbar", self)
@@ -631,7 +634,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         json_str = dumps(self.ide_state, indent=2)
         open("ide_state.json", 'w').write(json_str)
-        logging.info("Saved savestate to file")
+        logging.info("Saved save state to file")
 
     def save_before_closing(self):
         if self.current_project_root is None:
@@ -920,13 +923,16 @@ def main():
     """
     Create the QApplication window and add the Custom IDE to it.
     """
-    logging.info(f"Application started running: {datetime.datetime.now()}")
 
+    logging.info(f"Application started running: {datetime.datetime.now()}")
     app = QApplication(sys.argv)
     window = CustomIntegratedDevelopmentEnvironment()
+    window.q_application_reference = app
     window.show()
     exit_code = app.exec_()
     window.before_close()
+    window.close()
+    app.quit()
     logging.info(f"Application finished running: {datetime.datetime.now()}")
 
     sys.exit(exit_code)

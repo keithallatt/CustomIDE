@@ -344,4 +344,3 @@ class JSONHighlighter(QtGui.QSyntaxHighlighter):
                 index = expression.indexIn(text, index + length)
 
         self.setCurrentBlockState(0)
-

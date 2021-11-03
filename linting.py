@@ -12,7 +12,7 @@ from pylint import epylint as lint
 
 def run_linter_on_code(code: str = None, filename: str = None):
     """
-    Run linter on arbitrary code. This saves it to a temp file so we can call pylinter.
+    Run linter on arbitrary code. This saves it to a temp file so we can call python linter.
 
     :param code: The arbitrary code to lint.
     :param filename: Run the linter on a file instead.

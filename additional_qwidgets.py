@@ -15,7 +15,6 @@ import os
 import re
 import tempfile
 import syntax
-from json import loads
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
 from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel, QStandardItem, \
@@ -370,9 +369,9 @@ class QCodeEditor(QPlainTextEdit):
             current_line = self.toPlainText()[tc.position() - tc.positionInBlock(): tc.position()]
             m = re.match(r"^\s*$", current_line)
             if m is not None:
-                l = len(current_line)
-                if l:
-                    for i in range((l-1) % 4 + 1):
+                line_len = len(current_line)
+                if line_len:
+                    for i in range((line_len-1) % 4 + 1):
                         tc.deletePreviousChar()
                     self.setTextCursor(tc)
                     return
@@ -572,7 +571,7 @@ class QCodeFileTabs(QTabWidget):
         self.last_tab_index = index
         self._last_file_selected = next_tab
 
-    def set_syntax_highlighter(self, filename = None):
+    def set_syntax_highlighter(self, filename: str = None):
         if filename is None:
             current_widget = self.currentWidget()
             for k, v in self.tabs.items():
@@ -629,8 +628,10 @@ class CTreeView(QTreeView):
             return []
 
         files = get_files(self.application.current_project_root_str)
-        cprs_len = len(self.application.current_project_root_str) + 1
-        return [f[cprs_len:] for f in files]
+        project_root_str_len = len(self.application.current_project_root_str)
+        if not self.application.current_project_root_str.endswith(os.sep):
+            project_root_str_len += 1
+        return [f[project_root_str_len:] for f in files]
 
 
 class SearchBar(QLineEdit):
