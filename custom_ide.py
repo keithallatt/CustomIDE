@@ -28,7 +28,7 @@ from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
                              QAction, QPushButton, QStyle, QInputDialog)
 
-from additional_qwidgets import (QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog,
+from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog)
 
 from wizards import NewProjectWizard
@@ -75,7 +75,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.file_box = QWidget()
         self.model = QFileSystemModel()
-        self.tree = CTreeView(self)
+        self.tree = ProjectViewer(self)
         self.current_project_root = None
         self.current_project_root_str = None
         self.set_up_project_viewer()
@@ -108,8 +108,8 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         bwc = self.ide_theme['background_window_color']
         fwc = self.ide_theme['foreground_window_color']
 
-        lighter_factor = 1.2
-        darker_factor = 2
+        lighter_factor = 2
+        darker_factor = 0.8
         l_bg_w_c = "#313131"
         d_bg_w_c = "#1e1e1e"
 
@@ -141,7 +141,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             "QWidget {"
             f"  background-color: {bwc};  color: {fwc};"
             "}"
-            ""
             "QToolTip {"
             f"  background-color: {bwc};  color: {fwc};"
             "}"
@@ -149,19 +148,29 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             f"  background-color: {bwc};  color: {fwc};"
             "}"
             "QMenuBar {"
-            f"  background-color: {l_bg_w_c};  color: {fwc};"
+            f"  background-color: {d_bg_w_c};  color: {fwc};"
             "}"
             "QMenuBar::item {"
-            f"   background-color: {l_bg_w_c};  color: {fwc}; "
+            f"   background-color: {d_bg_w_c};  color: {fwc}; "
             "}"
             "QMenuBar::item::selected { "
-            f"   background-color: {d_bg_w_c}; "
+            f"   background-color: {l_bg_w_c}; "
             "}"
             "QMenu { "
-            f"   background-color: {l_bg_w_c};  color: {fwc}; border: 1px solid {d_bg_w_c};"
+            f"   background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};"
             "}"
             "QMenu::item::selected { "
-            f"   background-color: {d_bg_w_c}; "
+            f"   background-color: {l_bg_w_c}; "
+            "}"
+            "QTabBar::tab {"
+            f"  background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {d_bg_w_c}, stop: 0.5 {bwc}); "
+            f"  padding: 4px;"
+            f"  border: 0.5px solid {l_bg_w_c};"
+            "}"
+            "QTabBar::tab:selected, QTabBar::tab:hover { "
+            f"  background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {bwc}, stop: 0.5 {l_bg_w_c}); "
+            f"  padding: 4px;"
+            f"  border: 0.5px solid {l_bg_w_c};"
             "}"
         )
 

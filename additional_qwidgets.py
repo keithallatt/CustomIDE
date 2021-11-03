@@ -11,73 +11,26 @@ Code has been modified to fit specific needs / wants.
 - Allowed colors to be read in from ide_state.json for example
 - made rotated buttons not look as bloated. May be an issue on some systems but it works great for me.
 """
+import logging
 import os
 import re
 import tempfile
-import syntax
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
-from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel, QStandardItem, \
-    QFont
-from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
-                             QTextEdit, QPushButton, QStylePainter, QStyle,
-                             QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
-                             QLineEdit, QCompleter, QScrollArea)
+from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel,
+                         QStandardItem, QFont)
+from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
+                             QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea)
 
-import logging
+import syntax
+
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 
-class RotatedButton(QPushButton):
-    def __init__(self, text, parent=None):
-        super(RotatedButton, self).__init__(text, parent)
-        self.setMaximumWidth(20)
-
-    def paintEvent(self, event):
-        painter = QStylePainter(self)
-        painter.rotate(90)
-        painter.translate(0, -self.width())
-        painter.drawControl(QStyle.CE_PushButton, self.get_style_options())
-
-    def minimumSizeHint(self):
-        size = super(RotatedButton, self).minimumSizeHint()
-        size.transpose()
-        return size
-
-    def sizeHint(self):
-        size = super(RotatedButton, self).sizeHint()
-        size.transpose()
-        return size
-
-    def get_style_options(self):
-        options = QStyleOptionButton()
-        options.initFrom(self)
-        size = options.rect.size()
-        size.transpose()
-        options.rect.setSize(size)
-        options.features = QStyleOptionButton.None_
-        if self.isFlat():
-            options.features |= QStyleOptionButton.Flat
-        if self.menu():
-            options.features |= QStyleOptionButton.HasMenu
-        if self.autoDefault() or self.isDefault():
-            options.features |= QStyleOptionButton.AutoDefaultButton
-        if self.isDefault():
-            options.features |= QStyleOptionButton.DefaultButton
-        if self.isDown() or (self.menu() and self.menu().isVisible()):
-            options.state |= QStyle.State_Sunken
-        if self.isChecked():
-            options.state |= QStyle.State_On
-        if not self.isFlat() and not self.isDown():
-            options.state |= QStyle.State_Raised
-
-        options.text = self.text()
-        options.icon = self.icon()
-        options.iconSize = self.iconSize()
-        return options
-
+# Code Editor Part
 
 class QLineNumberArea(QWidget):
+    """ The line numbers that accompany the QCodeEditor class. """
     def __init__(self, editor):
         super().__init__(editor)
         self.codeEditor = editor
@@ -105,6 +58,7 @@ class QLineNumberArea(QWidget):
 
 
 class QCodeEditor(QPlainTextEdit):
+    """ The main text editor of the IDE """
     ProgrammingMode = 0
     RawTextInput = 1
 
@@ -149,6 +103,7 @@ class QCodeEditor(QPlainTextEdit):
             tc.setPosition(0)
             self.setTextCursor(tc)
             return
+
         # prevent shift-return from making extra newlines in a block (block = line in this case)
         if event.key() == Qt.Key_Return:
             current_line = self.toPlainText().split("\n")[tc.blockNumber()]
@@ -271,11 +226,9 @@ class QCodeEditor(QPlainTextEdit):
             Qt.Key_BraceLeft: "{}",
             Qt.Key_BracketLeft: "[]",
         }
-
         matching_closing = {
             Qt.Key_ParenRight, Qt.Key_BraceRight, Qt.Key_BracketRight
         }
-
         need_to_match_strings = {
             Qt.Key_QuoteDbl: "\"\"",
             Qt.Key_Apostrophe: "\'\'"
@@ -449,6 +402,7 @@ class QCodeEditor(QPlainTextEdit):
 
 
 class QCodeFileTabs(QTabWidget):
+    """ The tabbed view at the top of the code editor. """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tabs = {}
@@ -468,6 +422,8 @@ class QCodeFileTabs(QTabWidget):
         # connect function to signal made by tab rearranging
         self.tabBar().tabMoved: pyqtBoundSignal
         self.tabBar().tabMoved.connect(self.tabs_rearranged)
+
+        # self.setTabShape(QTabWidget.TabShape.Triangular)
 
         self.setTabsClosable(True)
         self.tabCloseRequested: pyqtBoundSignal
@@ -596,7 +552,7 @@ class QCodeFileTabs(QTabWidget):
             self.application.code_window.text_input_mode = QCodeEditor.ProgrammingMode
 
 
-class CTreeView(QTreeView):
+class ProjectViewer(QTreeView):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.application = parent
@@ -719,7 +675,12 @@ class SaveFilesOnCloseDialog(QDialog):
         q_btn = QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel
 
         self.buttonBox = QDialogButtonBox(q_btn)
-        self.buttonBox.clicked.connect(self.button_clicked)
+
+        def button_clicked(button: QPushButton):
+            self.response = button.text().replace("&", "")  # remove mnemonic part
+            self.accept()
+
+        self.buttonBox.clicked.connect(button_clicked)
 
         self.layout = QVBoxLayout()
 
@@ -734,10 +695,6 @@ class SaveFilesOnCloseDialog(QDialog):
         self.setLayout(self.layout)
 
         self.response = None
-
-    def button_clicked(self, button: QPushButton):
-        self.response = button.text().replace("&", "")  # remove mnemonic part
-        self.accept()
 
 
 class CommandLineCallDialog(QDialog):
@@ -768,11 +725,6 @@ class CommandLineCallDialog(QDialog):
         self.layout.addWidget(self.scrollArea)
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
-
         self.resize(900, 400)
 
-    def set_content(self, content):
-        content = content.split("\n")
-        content = "\n".join(content)
-
-        self.message.setText(content)
+        self.set_content = self.message.setText

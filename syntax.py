@@ -18,6 +18,7 @@ import builtins
 import inspect
 import os
 import re
+import keyword
 
 
 def format_color(color, style=''):
@@ -49,14 +50,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
     """Syntax highlighter for the Python language. """
 
     # Python keywords
-    keywords = [
-        'and', 'as', 'assert', 'break', 'class', 'continue', 'def',
-        'del', 'elif', 'else', 'except', 'exec', 'finally',
-        'for', 'from', 'global', 'if', 'import', 'in',
-        'is', 'lambda', 'not', 'or', 'pass', 'print',
-        'raise', 'return', 'try', 'with', 'while', 'yield',
-        'None', 'True', 'False',
-    ]
+    keywords = keyword.kwlist
 
     # Python operators
     operators = list(map(escape, [

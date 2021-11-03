@@ -74,24 +74,15 @@ class NewProjectPage(QWizardPage):
         projects_folder += project_name
 
         fp_box, self.fp_line_edit = NewProjectPage.labelled_q_widget(
-            "Project Path:", (QLineEdit, os.path.expanduser(projects_folder))
-        )
-
+            "Project Path:", (QLineEdit, os.path.expanduser(projects_folder)))
         env_box, self.env_combo_box = NewProjectPage.labelled_q_widget(
-            "Environment:", (QComboBox, ['Virtual Environment (venv)', 'System Python Interpreter'])
-        )
-
+            "Environment:", (QComboBox, ['Virtual Environment (venv)', 'System Python Interpreter']))
         env_location_box, self.env_location_line_edit = NewProjectPage.labelled_q_widget(
-            "Environment Location:", (QLineEdit, os.sep.join([os.path.expanduser(projects_folder), "venv"]))
-        )
-
+            "Environment Location:", (QLineEdit, os.sep.join([os.path.expanduser(projects_folder), "venv"])))
         system_site_packages, self.system_site_packages = NewProjectPage.labelled_q_widget(
-            "System Site Packages:", (QCheckBox, "Give the venv access to the system site-packages dir?")
-        )
-
+            "System Site Packages:", (QCheckBox, "Give the venv access to the system site-packages dir?"))
         main_script_box, self.main_script_check = NewProjectPage.labelled_q_widget(
-            "Main Script:", (QCheckBox, "Initialize with main.py?")
-        )
+            "Main Script:", (QCheckBox, "Initialize with main.py?"))
 
         self.main_script_check.setChecked(True)
 
