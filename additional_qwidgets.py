@@ -160,6 +160,8 @@ class QCodeEditor(QPlainTextEdit):
 
             if current_line[:tc.positionInBlock()].endswith(":"):
                 whitespace += "    "
+            elif current_line.lstrip().startswith('return') and whitespace:
+                whitespace = whitespace[:-4]
 
             tc.insertText("\n" + whitespace)
             self.setTextCursor(tc)
@@ -633,7 +635,6 @@ class CTreeView(QTreeView):
 
 
 class SearchBar(QLineEdit):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.application = parent
