@@ -23,7 +23,7 @@ from PyQt5.QtGui import QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor,
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit,
                              QTextEdit, QPushButton, QStylePainter, QStyle,
                              QStyleOptionButton, QTabWidget, QTreeView, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
-                             QLineEdit, QCompleter)
+                             QLineEdit, QCompleter, QScrollArea)
 
 import logging
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
@@ -542,10 +542,11 @@ class QCodeFileTabs(QTabWidget):
         last_tab = self.tabText(index)
         if last_tab not in self.temp_files.keys():
             # keep until program quits.
-            self.temp_files.update({last_tab: tempfile.mkstemp()[1]})
+            self.temp_files.update({last_tab: tempfile.mkstemp(suffix=last_tab[last_tab.index('.'):])[1]})
         last_temp_file = self.temp_files[last_tab]
         code_to_save = self.application.code_window.toPlainText()
         open(last_temp_file, 'w').write(code_to_save)
+        return last_temp_file
 
     def file_selected_by_index(self, index: int) -> None:
         """
@@ -738,11 +739,11 @@ class SaveFilesOnCloseDialog(QDialog):
         self.accept()
 
 
-class CLOCDialog(QDialog):
-    def __init__(self, parent=None):
+class CommandLineCallDialog(QDialog):
+    def __init__(self, command_line_function: str, header_str: str, parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle("External Command 'cloc' Output")
+        self.setWindowTitle(f"{command_line_function}")
 
         q_btn = QDialogButtonBox.Ok
 
@@ -750,13 +751,24 @@ class CLOCDialog(QDialog):
         self.buttonBox.accepted.connect(self.accept)
 
         self.layout = QVBoxLayout()
-        self.message_header = QLabel("Line counting for " + parent.current_project_root_str)
+        self.message_header = QLabel(header_str)
         self.message = QLabel()
         self.message.setFont(QFont("Courier New", 10))
+
+        self.scrollArea = QScrollArea(self)
+        self.scrollArea.setWidgetResizable(True)
+        content = QWidget(self)
+        self.scrollArea.setWidget(content)
+        lay = QVBoxLayout(content)
+        self.message.setWordWrap(True)
+        lay.addWidget(self.message)
+
         self.layout.addWidget(self.message_header)
-        self.layout.addWidget(self.message)
+        self.layout.addWidget(self.scrollArea)
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
+
+        self.resize(900, 400)
 
     def set_content(self, content):
         content = content.split("\n")

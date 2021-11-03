@@ -26,9 +26,10 @@ from json import loads, dumps
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
-                             QAction, QPushButton, QStyle)
+                             QAction, QPushButton, QStyle, QInputDialog)
 
-from additional_qwidgets import QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog, SearchBar, CLOCDialog
+from additional_qwidgets import (QCodeEditor, QCodeFileTabs, CTreeView, SaveFilesOnCloseDialog,
+                                 SearchBar, CommandLineCallDialog)
 from wizards import NewProjectWizard
 from linting import run_linter_on_code
 from webbrowser import open_new_tab as open_in_browser
@@ -432,6 +433,25 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         run_menu.addAction(run_action)
 
+        # PIP MENU
+
+        pip_menu = self.menu_bar.addMenu("&Pip")
+
+        installed_packages_action = QAction("Installed Packages List", self)
+        installed_packages_action.triggered.connect(lambda: self.pip_function("list"))
+
+        install_pip_action = QAction(f"Install Package...", self)
+        install_pip_action.triggered.connect(lambda: self.pip_function("install"))
+
+        pip_help_action = QAction(f"Pip Help", self)
+        pip_help_action.triggered.connect(lambda: self.pip_function("help"))
+
+        pip_menu.addActions([
+            installed_packages_action,
+            install_pip_action,
+            pip_help_action
+        ])
+
         # HELP MENU
 
         help_menu = self.menu_bar.addMenu("&Help")
@@ -506,11 +526,63 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         stdout = stdout.replace(b'classified', b'       Classified')
 
         stdout = stdout.decode("utf-8")
-        dial = CLOCDialog(self)
+        dial = CommandLineCallDialog("cloc", "Line counting for " + self.current_project_root_str, self)
         dial.set_content(stdout)
         dial.exec()
 
         logging.info("Performed `cloc` on project")
+
+    def pip_function(self, function, *args):
+        if self.current_project_root is None:
+            # make sure we're working only when the project root is set.
+            return
+
+        pip_filepath = self.ide_state.get("pip_path", "/usr/bin/pip3")
+
+        venv_path = self.current_project_root_str
+        if not venv_path.endswith(os.sep):
+            venv_path += os.sep
+
+        venv_path += os.sep.join(['venv', 'bin', 'pip3'])
+
+        if os.path.exists(venv_path):
+            pip_filepath = venv_path
+
+        valid_functions = [
+            'install', 'download', 'uninstall', 'freeze', 'list', 'show', 'check', 'config',
+            'search', 'wheel', 'hash', 'completion', 'debug', 'help'
+        ]
+
+        assert function in valid_functions, f"Invalid pip function {function}."
+
+        needs_package_name = [
+            'install', 'download', 'uninstall'
+        ]
+
+        if function in needs_package_name and not args:
+            # get function name
+            text, ok = QInputDialog.getText(self, f'{function.capitalize()} pip package', 'Package name:')
+            print(text, ok)
+            if ok:
+                args = (text,)
+            else:
+                return
+
+            self.statusBar().showMessage(f"{function.capitalize()}ing module '{text}'")
+
+        command = [pip_filepath, function, *args]
+        out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = out.communicate()
+
+        self.statusBar().showMessage(" ".join(command))
+
+        stdout = stdout.decode('utf-8')
+
+        dial = CommandLineCallDialog(f"pip {function}", "", self)
+        dial.set_content(stdout)
+        dial.exec()
+
+        logging.info(f"Performed `pip {function}`")
 
     def before_close(self):
         if self.current_project_root is not None:
@@ -808,6 +880,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         """ Filter for focusing other widgets. Prevents this. """
         # should prevent focus switching
         # parameter 'next' renamed to '_' as 'next' shadows a builtin.
+        # todo: only return false if i'm in the code window
         return False
 
     def eventFilter(self, q_object, event):

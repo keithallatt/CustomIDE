@@ -85,6 +85,10 @@ class NewProjectPage(QWizardPage):
             "Environment Location:", (QLineEdit, os.sep.join([os.path.expanduser(projects_folder), "venv"]))
         )
 
+        system_site_packages, self.system_site_packages = NewProjectPage.labelled_q_widget(
+            "System Site Packages:", (QCheckBox, "Give the venv access to the system site-packages dir?")
+        )
+
         main_script_box, self.main_script_check = NewProjectPage.labelled_q_widget(
             "Main Script:", (QCheckBox, "Initialize with main.py?")
         )
@@ -102,6 +106,7 @@ class NewProjectPage(QWizardPage):
         layout.addWidget(fp_box)
         layout.addWidget(env_box)
         layout.addWidget(env_location_box)
+        layout.addWidget(system_site_packages)
         layout.addWidget(main_script_box)
         self.setLayout(layout)
         self.setFocus()
@@ -152,6 +157,7 @@ class NewProjectPage(QWizardPage):
         env_choice = self.env_combo_box.currentText()
         chose_venv = "(venv)" in env_choice
         include_main = self.main_script_check.isChecked()
+        ssp = self.system_site_packages.isChecked()
 
         assert not os.path.exists(fp), "Filepath already exists"
         assert " " not in fp, "Cannot use spaces (for time being)"
@@ -167,7 +173,12 @@ class NewProjectPage(QWizardPage):
 
             if chose_venv:
                 python_fp = loads(open('ide_state.json', 'r').read()).get('python_bin_location', '/usr/bin/python3')
-                subprocess.call([python_fp, "-m", "venv", fp + "venv"])
+                command = [python_fp, "-m", "venv", fp + "venv"]
+
+                if ssp:
+                    command.insert(3, "--system-site-packages")
+
+                subprocess.call(command)
             if include_main:
                 main_fp = fp + "main.py"
 
