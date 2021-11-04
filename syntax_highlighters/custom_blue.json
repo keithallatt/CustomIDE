@@ -1,7 +1,7 @@
 {
     "keyword": ["#2f8eab"],
-    "operator": ["white"],
-    "brace": ["white"],
+    "operator": ["#ffffff"],
+    "brace": ["#ffffff"],
     "builtins": ["#a2eae0"],
     "defclass": ["#92d7ef"],
     "string": ["#bcb8ce"],

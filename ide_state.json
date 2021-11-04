@@ -9,9 +9,9 @@
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "ide_theme": "custom_blue.json",
-  "syntax_highlighter_theme": "custom_blue.json",
+  "syntax_highlighter": "custom_testing.json",
   "save_on_close_automatically": false,
-  "selected_tab": 1,
+  "selected_tab": 0,
   "save_on_run": false,
   "window_geometry": [
     2064,

@@ -31,11 +31,14 @@ from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemMode
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog)
 
-from wizards import NewProjectWizard
+from new_project_wizard import NewProjectWizard
 from linting import run_linter_on_code
 from webbrowser import open_new_tab as open_in_browser
 import datetime
 import logging
+
+from theme_editor import ThemeEditor
+
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 
@@ -47,9 +50,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     NO_FILES_OPEN_TEXT = "\n\n\n\n\tNo files are currently opened.\n\t" \
                          "Double-click on a file in the side window to start editing.\n\n\n\n"
-
-    # reboot exit code.
-    EXIT_CODE_REBOOT = -123456789
 
     def __init__(self, parent=None):
         """ Create the widget """
@@ -435,8 +435,14 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         else:
             show_files_action.setChecked(True)
 
-        view_menu.addAction(show_tool_bar_action)
-        view_menu.addAction(show_files_action)
+        show_theme_editor_action = QAction("Show Theme Editor", self)
+        show_theme_editor_action.triggered.connect(self.show_theme_editor)
+
+        view_menu.addActions([
+            show_tool_bar_action,
+            show_files_action,
+            show_theme_editor_action
+        ])
 
         # RUN MENU
 
@@ -580,7 +586,6 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         if function in needs_package_name and not args:
             # get function name
             text, ok = QInputDialog.getText(self, f'{function.capitalize()} pip package', 'Package name:')
-            print(text, ok)
             if ok:
                 args = (text,)
             else:
@@ -675,6 +680,16 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
                     open(s_to, 'w').write(file_contents)
 
         return True
+
+    def set_theme(self, k, v):
+        assert k.endswith('s')
+        k = k[:-1]
+        assert k in self.ide_state.keys(), f"{k}"
+        self.ide_state[k] = v
+
+    def show_theme_editor(self):
+        window = ThemeEditor(self)
+        window.show()
 
     # File functions
 
@@ -936,12 +951,9 @@ def main():
     logging.info(f"Application started running: {datetime.datetime.now()}")
     app = QApplication(sys.argv)
     window = CustomIntegratedDevelopmentEnvironment()
-    window.q_application_reference = app
     window.show()
     exit_code = app.exec_()
     window.before_close()
-    window.close()
-    app.quit()
     logging.info(f"Application finished running: {datetime.datetime.now()}")
 
     sys.exit(exit_code)

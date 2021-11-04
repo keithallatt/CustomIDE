@@ -12,8 +12,6 @@ from PyQt5.QtWidgets import (QWizard, QWizardPage, QComboBox, QVBoxLayout, QHBox
 import logging
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
-WIZARD_DEBUG = True
-
 MAIN_PY_DEFAULT = """# This is a sample Python script.
 
 # Press Ctrl-Shift-R to execute it or replace it with your code.
@@ -21,6 +19,7 @@ MAIN_PY_DEFAULT = """# This is a sample Python script.
 def primes_under(limit):
     primes = [2, 3]
     for i in range(5, limit + 1, 6):
+        # all primes p > 3 are in the form 6n +/- 1
         for p in primes:
             if i % p == 0:
                 break

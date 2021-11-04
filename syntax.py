@@ -41,7 +41,7 @@ def format_color(color, style=''):
 STYLES = {
     k: format_color(*v) for k, v in loads(
         open("syntax_highlighters" + os.sep +
-             loads(open("ide_state.json", 'r').read())['syntax_highlighter_theme'], 'r').read()
+             loads(open("ide_state.json", 'r').read())['syntax_highlighter'], 'r').read()
     ).items()
 }
 
