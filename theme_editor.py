@@ -6,9 +6,8 @@ import sys
 from json import loads, dumps
 
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QPushButton, QComboBox, QVBoxLayout, QHBoxLayout,
+from PyQt5.QtWidgets import (QWidget, QMainWindow, QPushButton, QComboBox, QVBoxLayout, QHBoxLayout,
                              QLabel, QColorDialog, QLineEdit, QSpinBox, QInputDialog, QDialog, QDialogButtonBox)
-
 
 DEFAULT_SYNTAX_HIGHLIGHTER = {
     "keyword": ["#2f8eab"],
@@ -156,11 +155,12 @@ class ThemeEditor(QMainWindow):
         dial = QDialog(self)
         dial.setWindowTitle("")
 
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok)
-        button_box.accepted.connect(dial.accept)
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Close)
+        button_box.accepted.connect(lambda: sys.exit(0))
+        button_box.rejected.connect(dial.accept)
 
         layout = QVBoxLayout()
-        message = QLabel("Changes will take effect on restart.")
+        message = QLabel("Changes will take effect on restart. Quit now?")
         layout.addWidget(message)
         layout.addWidget(button_box)
         dial.setLayout(layout)
@@ -187,8 +187,6 @@ class ThemeOption(QWidget):
         style_option = None
         string_option = None
         int_option = None
-
-        option_type = None
 
         if type(args) == str and args.startswith("#"):
             default_color = args

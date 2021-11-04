@@ -2,7 +2,7 @@
 The main application.
 
 Count lines with:
-    cloc . --by-file --exclude-dir=venv,.idea
+    cloc . --by-file --exclude-dir=venv,.idea --include-ext=py
 
 -- NOTICE --
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
@@ -12,8 +12,6 @@ next steps:
  - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
      another click
  - git stuff maybe?
- - app themes (like syntax highlighter but for app background / foreground colors and stuff)
- - settings panel
 
 """
 import os
@@ -26,7 +24,7 @@ from json import loads, dumps
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
-                             QAction, QPushButton, QStyle, QInputDialog)
+                             QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel)
 
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog)
@@ -36,6 +34,7 @@ from linting import run_linter_on_code
 from webbrowser import open_new_tab as open_in_browser
 import datetime
 import logging
+from send2trash import send2trash
 
 from theme_editor import ThemeEditor
 
@@ -584,7 +583,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         ]
 
         if function in needs_package_name and not args:
-            # get function name
+            # get package name
             text, ok = QInputDialog.getText(self, f'{function.capitalize()} pip package', 'Package name:')
             if ok:
                 args = (text,)
@@ -650,6 +649,18 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         open("ide_state.json", 'w').write(json_str)
         logging.info("Saved save state to file")
 
+    def get_file_from_viewer(self):
+        q_model_indices = self.tree.selectedIndexes()
+        assert len(q_model_indices) <= 1, "Multiple selected."
+        last_index = q_model_indices[-1]
+        file_paths = []
+        while last_index.data(Qt.DisplayRole) != os.sep:
+            file_paths.append(last_index.data(Qt.DisplayRole))
+            last_index = last_index.parent()
+        file_paths.append("")
+        filepath = os.sep.join(file_paths[::-1])
+        return filepath
+
     def save_before_closing(self):
         if self.current_project_root is None:
             return
@@ -663,6 +674,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         save_from = dict()
         for k, v in self.file_tabs.temp_files.items():
             file = proj_root + k
+            if not os.path.exists(file):
+                print("File missing, probably deleted:", file)
+                continue
             if open(file, 'r').read() != open(v, 'r').read():
                 unsaved_files.append(k)
                 save_from[file] = v
@@ -701,8 +715,9 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         dial = QFileDialog()
         dial.setDirectory(self.current_project_root_str)
         dial.setDefaultSuffix("*.py")
-        filename, _ = dial.getSaveFileName(self, "Save file", "",
-                                           "Python Files (*.py)", options=options_)
+
+        filename, _ = dial.getSaveFileName(self, "Save file", "", "Python Files (*.py)", options=options_)
+
         if filename:
             filename: str
             last_part = filename.split(os.sep)[-1]
@@ -721,19 +736,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
     def open_file(self, filepath: str = None):
         # if used for shortcut
         if filepath is None:
-            q_model_indices = self.tree.selectedIndexes()
-            assert len(q_model_indices) <= 1, "Multiple selected."
-            last_index = q_model_indices[-1]
-
-            file_paths = []
-
-            while last_index.data(Qt.DisplayRole) != os.sep:
-                file_paths.append(last_index.data(Qt.DisplayRole))
-                last_index = last_index.parent()
-
-            file_paths.append("")
-            filepath = os.sep.join(file_paths[::-1])
-
+            filepath = self.get_file_from_viewer()
             self.open_file(filepath)
             return
 
@@ -785,6 +788,33 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
             self.code_window.text_input_mode = QCodeEditor.RawTextInput
             self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
             self.code_window.setEnabled(False)
+
+    def delete_file(self):
+        filepath = self.get_file_from_viewer()
+
+        dial = QDialog(self)
+        dial.setWindowTitle("Delete File")
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No)
+
+        def delete_file_inner():
+            fp = filepath[len(self.current_project_root_str):]
+            fp = fp.lstrip(os.sep)
+
+            self.file_tabs.close_tab(self.file_tabs.indexOf(self.file_tabs.tabs[fp]))
+
+            send2trash(filepath)
+            dial.accept()
+
+        button_box.accepted.connect(delete_file_inner)
+        button_box.rejected.connect(dial.reject)
+
+        layout = QVBoxLayout()
+        message = QLabel("Delete File? This action will move the file to the trash folder.")
+        layout.addWidget(message)
+        layout.addWidget(button_box)
+        dial.setLayout(layout)
+        dial.exec()
 
     # Project functions
 

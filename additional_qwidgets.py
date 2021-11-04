@@ -18,9 +18,10 @@ import tempfile
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
 from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel,
-                         QStandardItem, QFont)
+                         QStandardItem, QFont, QCursor)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
-                             QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea)
+                             QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea, QMenu,
+                             QApplication)
 
 import syntax
 
@@ -556,6 +557,26 @@ class ProjectViewer(QTreeView):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.application = parent
+
+    def mousePressEvent(self, event):
+        QTreeView.mousePressEvent(self, event)
+        if event.button() == Qt.RightButton:
+            top_menu = QMenu(self.application)
+
+            menu = top_menu.addMenu("Menu")
+
+            open_action = menu.addAction("Open File")
+            copy_filepath_action = menu.addAction("Copy Filepath")
+            delete_action = menu.addAction("Delete File")
+
+            action = menu.exec_(QCursor.pos())
+
+            if action == open_action:
+                self.application.open_file()
+            elif action == delete_action:
+                self.application.delete_file()
+            elif action == copy_filepath_action:
+                QApplication.clipboard().setText(self.application.get_file_from_viewer())
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return:
