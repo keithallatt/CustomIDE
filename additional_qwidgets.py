@@ -8,13 +8,15 @@ Uses code from https://stackoverflow.com/questions/7339685/how-to-rotate-a-qpush
 RotatedButton courtesy of @ Ulrich Dangel
 
 Code has been modified to fit specific needs / wants.
-- Allowed colors to be read in from ide_state.json for example
+- Allowed colors to be read in from files specified in ide_state.json for example
 - made rotated buttons not look as bloated. May be an issue on some systems but it works great for me.
 """
+import inspect
 import logging
 import os
 import re
 import tempfile
+import warnings
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
 from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel,
@@ -107,6 +109,7 @@ class QCodeEditor(QPlainTextEdit):
 
         # prevent shift-return from making extra newlines in a block (block = line in this case)
         if event.key() == Qt.Key_Return:
+            # todo: fix this, something wonky when entering at start of line after ':' line
             current_line = self.toPlainText().split("\n")[tc.blockNumber()]
 
             m = re.match(r"\s*", current_line)
@@ -330,14 +333,66 @@ class QCodeEditor(QPlainTextEdit):
                     self.setTextCursor(tc)
                     return
 
+        if event.key() == Qt.Key_Slash and event.modifiers() == Qt.ControlModifier:
+            start_pos = tc.selectionStart()
+            end_pos = tc.selectionEnd()
+
+            tc.setPosition(start_pos)
+            start_line = tc.blockNumber()
+            start_line_pos = start_pos - tc.positionInBlock()
+            tc.setPosition(end_pos)
+            end_line = tc.blockNumber()
+
+            tc.setPosition(start_pos)
+            lines_to_comment = self.document().toPlainText().split("\n")[start_line: end_line+1]
+
+            # length of all lines + (len(lines_to_comment) - 1) which is number of newlines
+            length_of_text = sum(map(len, lines_to_comment)) + len(lines_to_comment) - 1
+
+            tc.setPosition(start_line_pos)
+            tc.setPosition(start_line_pos + length_of_text, QTextCursor.KeepAnchor)
+
+            min_indent = min(map(lambda x: len(x) - len(x.lstrip(' ')), lines_to_comment))
+            is_currently_commented = all(len(x) > min_indent and x.lstrip(' ')[0] == "#" for x in lines_to_comment)
+
+            if is_currently_commented:
+                lines_uncommented = []
+                for line in lines_to_comment:
+                    if line.lstrip(' ').startswith("# "):
+                        lines_uncommented.append(line.replace('# ', '', 1))
+                    elif line.lstrip(' ').startswith("#"):
+                        lines_uncommented.append(line.replace('#', '', 1))
+                    else:
+                        warnings.warn(f"Line was meant to be commented but wasn't: {line}")
+
+                to_replace_with = "\n".join(lines_uncommented)
+            else:
+                def insert_into(wrapper, to_insert, index):
+                    return wrapper[:index] + to_insert + wrapper[index:]
+
+                to_replace_with = "\n".join(map(lambda x: insert_into(x, "# ", min_indent), lines_to_comment))
+
+            tc.insertText(to_replace_with)
+            tc.setPosition(start_line_pos)
+            tc.setPosition(start_line_pos + len(to_replace_with), QTextCursor.KeepAnchor)
+
+            self.setTextCursor(tc)
+            return
+
+        # for debug purposes. Will be removed in the final version
+        print_possible_keys = False
+        if print_possible_keys:
+            possible_keys = []
+            for member, value in inspect.getmembers(Qt):
+                if member.startswith("Key_"):
+                    if value == event.key():
+                        possible_keys.append(member)
+            print(possible_keys)
+
         return QPlainTextEdit.keyPressEvent(self, event)
 
     def line_number_area_width(self):
-        digits = 1
-        max_value = max(1, self.blockCount())
-        while max_value >= 10:
-            max_value /= 10
-            digits += 1
+        digits = len(str(self.blockCount()))  # get number of characters in the last value.
         space = 3 + self.fontMetrics().width('9') * digits
         return space
 

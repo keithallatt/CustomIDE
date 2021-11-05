@@ -7,7 +7,8 @@ from json import loads, dumps
 
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (QWidget, QMainWindow, QPushButton, QComboBox, QVBoxLayout, QHBoxLayout,
-                             QLabel, QColorDialog, QLineEdit, QSpinBox, QInputDialog, QDialog, QDialogButtonBox)
+                             QLabel, QColorDialog, QLineEdit, QSpinBox, QInputDialog, QDialog, QDialogButtonBox,
+                             QApplication)
 
 DEFAULT_SYNTAX_HIGHLIGHTER = {
     "keyword": ["#2f8eab"],
@@ -152,11 +153,12 @@ class ThemeEditor(QMainWindow):
         theme = self.theme_list.currentText()
 
         self.application.set_theme(kind, theme)
+
         dial = QDialog(self)
         dial.setWindowTitle("")
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Close)
-        button_box.accepted.connect(lambda: sys.exit(0))
+        button_box.accepted.connect(lambda: QApplication.exit(0))
         button_box.rejected.connect(dial.accept)
 
         layout = QVBoxLayout()
