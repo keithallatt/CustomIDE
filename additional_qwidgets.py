@@ -149,6 +149,9 @@ class FindAndReplaceWidget(QWidget):
         pass
 
     def replace_all_button_pushed(self):
+        tc = self.code_editor.textCursor()
+        tc.beginEditBlock()
+
         all_text = self.code_editor.toPlainText()
         to_find_text = self.find_line.text()
         current_selection_index = FindAndReplaceWidget.find_nth(all_text, to_find_text, self.occurrence_index)
@@ -156,13 +159,19 @@ class FindAndReplaceWidget(QWidget):
         all_before, all_after = all_text[:current_selection_index], all_text[current_selection_index:]
 
         to_replace_text = self.replace_line.text()
+
+        tc.setPosition(len(all_before))
+        tc.setPosition(len(all_before) + len(all_after), QTextCursor.KeepAnchor)
+
         all_after = all_after.replace(to_find_text, to_replace_text)
 
         self.num_occurrences = all_before.count(to_find_text)
         self.occurrence_index = 1 if self.num_occurrences else 0
 
         self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
-        self.code_editor.setPlainText(all_before + all_after)
+
+        tc.insertText(all_after)
+        self.code_editor.setTextCursor(tc)
 
         if to_find_text in all_before:
             dial = QDialog(self)
@@ -170,17 +179,28 @@ class FindAndReplaceWidget(QWidget):
 
             button_box = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No)
 
-            def replace_again_and_accept():
+            def replace_again_and_accept(before):
                 self.occurrence_index -= 1
-                self.find_button_pushed()
-                self.replace_all_button_pushed()
+
+                tc.setPosition(0)
+                tc.setPosition(len(before), QTextCursor.KeepAnchor)
+
+                _all_before = before.replace(to_find_text, to_replace_text)
+
+                self.num_occurrences = _all_before.count(to_find_text)
+                self.occurrence_index = 1 if self.num_occurrences else 0
+
+                self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
+
+                tc.insertText(_all_before)
+
                 dial.accept()
 
             def dont_replace_and_reject():
                 self.find_button_pushed()
                 dial.reject()
 
-            button_box.accepted.connect(replace_again_and_accept)
+            button_box.accepted.connect(lambda: replace_again_and_accept(all_before))
             button_box.rejected.connect(dont_replace_and_reject)
 
             layout = QVBoxLayout()
@@ -189,6 +209,9 @@ class FindAndReplaceWidget(QWidget):
             layout.addWidget(button_box)
             dial.setLayout(layout)
             dial.exec()
+
+        tc.endEditBlock()
+        self.code_editor.setTextCursor(tc)
 
 
 class QLineNumberArea(QWidget):
