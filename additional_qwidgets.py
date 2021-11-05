@@ -11,6 +11,7 @@ Code has been modified to fit specific needs / wants.
 - Allowed colors to be read in from files specified in ide_state.json for example
 - made rotated buttons not look as bloated. May be an issue on some systems but it works great for me.
 """
+from __future__ import annotations
 import inspect
 import logging
 import os
@@ -23,14 +24,174 @@ from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
                          QStandardItem, QFont, QCursor)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
                              QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea, QMenu,
-                             QApplication)
+                             QApplication, QGridLayout)
 
 import syntax
 
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 
-# Code Editor Part
+class FindAndReplaceWidget(QWidget):
+    def __init__(self, parent=None, code_editor: QCodeEditor = None):
+        super().__init__(parent)
+
+        self.code_editor = code_editor
+
+        layout = QGridLayout()
+
+        self.find_label = QLabel("Find:")
+        self.replace_label = QLabel("Replace:")
+
+        self.find_line = QLineEdit(self)
+        self.replace_line = QLineEdit(self)
+
+        self.find_line.textChanged.connect(self.find_edit_changed)
+
+        self.find_next_button = QPushButton("Find", self)
+        self.replace_button = QPushButton("Replace", self)
+        self.replace_all_button = QPushButton("Replace All", self)
+
+        self.hide_this = QPushButton("x", self)
+
+        self.find_next_button.clicked.connect(self.find_button_pushed)
+        self.replace_button.clicked.connect(self.replace_button_pushed)
+        self.replace_all_button.clicked.connect(self.replace_all_button_pushed)
+        self.hide_this.clicked.connect(self.hide)
+
+        self.info_label = QLabel("0/0")
+
+        layout.addWidget(self.find_label, 0, 0, 1, 1)
+        layout.addWidget(self.replace_label, 1, 0, 1, 1)
+
+        layout.addWidget(self.find_line, 0, 1, 1, 1)
+        layout.addWidget(self.replace_line, 1, 1, 1, 1)
+
+        layout.addWidget(self.find_line, 0, 1, 1, 1)
+        layout.addWidget(self.replace_line, 1, 1, 1, 1)
+
+        layout.addWidget(self.info_label, 0, 2, 1, 2)
+        layout.addWidget(self.find_next_button, 1, 2, 1, 1)
+        layout.addWidget(self.replace_button, 1, 3, 1, 1)
+        layout.addWidget(self.replace_all_button, 1, 4, 1, 1)
+        layout.addWidget(self.hide_this, 0, 4, 1, 1)
+
+
+
+        self.setLayout(layout)
+
+        self.occurrence_index = 0
+        self.num_occurrences = 0
+
+        self.hide()
+
+    @staticmethod
+    def find_nth(haystack, needle, n):
+        start = haystack.find(needle)
+        while start >= 0 and n > 1:
+            start = haystack.find(needle, start + len(needle))
+            n -= 1
+        return start
+
+    def find_edit_changed(self, new_text):
+        if not new_text:
+            self.occurrence_index = 0
+            self.num_occurrences = 0
+        else:
+            self.occurrence_index = 0
+            self.num_occurrences = self.code_editor.toPlainText().count(new_text)
+
+        self.find_button_pushed()
+        self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
+
+    def find_button_pushed(self):
+        if not self.num_occurrences:
+            return
+
+        self.occurrence_index += 1
+        if self.occurrence_index > self.num_occurrences:
+            self.occurrence_index = 1
+
+        document_text = self.code_editor.toPlainText()
+        to_find = self.find_line.text()
+        nth = self.occurrence_index
+        string_index = FindAndReplaceWidget.find_nth(document_text, to_find, nth)
+
+        tc = self.code_editor.textCursor()
+        tc.setPosition(string_index)
+        tc.setPosition(string_index + len(to_find), QTextCursor.KeepAnchor)
+        self.code_editor.setTextCursor(tc)
+
+        self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
+
+    def replace_button_pushed(self):
+        if not self.num_occurrences:
+            return
+
+        to_find_text = self.find_line.text()
+        tc = self.code_editor.textCursor()
+
+        selected_text = self.code_editor.toPlainText()[tc.selectionStart():tc.selectionEnd()]
+
+        if to_find_text != selected_text:
+            self.occurrence_index -= 1
+            self.find_button_pushed()
+
+        tc = self.code_editor.textCursor()
+        to_replace_text = self.replace_line.text()
+
+        tc.insertText(to_replace_text)
+        self.code_editor.setTextCursor(tc)
+        self.num_occurrences = self.code_editor.toPlainText().count(to_find_text)
+        self.occurrence_index -= 1
+
+        if self.num_occurrences:
+            self.find_button_pushed()
+        else:
+            self.info_label.setText("0/0")
+        pass
+
+    def replace_all_button_pushed(self):
+        all_text = self.code_editor.toPlainText()
+        to_find_text = self.find_line.text()
+        current_selection_index = FindAndReplaceWidget.find_nth(all_text, to_find_text, self.occurrence_index)
+
+        all_before, all_after = all_text[:current_selection_index], all_text[current_selection_index:]
+
+        to_replace_text = self.replace_line.text()
+        all_after = all_after.replace(to_find_text, to_replace_text)
+
+        self.num_occurrences = all_before.count(to_find_text)
+        self.occurrence_index = 1 if self.num_occurrences else 0
+
+        self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
+        self.code_editor.setPlainText(all_before + all_after)
+
+        if to_find_text in all_before:
+            dial = QDialog(self)
+            dial.setWindowTitle("Replace All")
+
+            button_box = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No)
+
+            def replace_again_and_accept():
+                self.occurrence_index -= 1
+                self.find_button_pushed()
+                self.replace_all_button_pushed()
+                dial.accept()
+
+            def dont_replace_and_reject():
+                self.find_button_pushed()
+                dial.reject()
+
+            button_box.accepted.connect(replace_again_and_accept)
+            button_box.rejected.connect(dont_replace_and_reject)
+
+            layout = QVBoxLayout()
+            message = QLabel("Continue replacing from the beginning?")
+            layout.addWidget(message)
+            layout.addWidget(button_box)
+            dial.setLayout(layout)
+            dial.exec()
+
 
 class QLineNumberArea(QWidget):
     """ The line numbers that accompany the QCodeEditor class. """

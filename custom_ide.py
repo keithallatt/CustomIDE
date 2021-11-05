@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemMode
                              QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel)
 
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
-                                 SearchBar, CommandLineCallDialog)
+                                 SearchBar, CommandLineCallDialog, FindAndReplaceWidget)
 
 from new_project_wizard import NewProjectWizard
 from linting import run_linter_on_code
@@ -41,7 +41,7 @@ from theme_editor import ThemeEditor
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 
-class CustomIntegratedDevelopmentEnvironment(QMainWindow):
+class CustomIDE(QMainWindow):
     """
     The main IDE application window. Contains everything from the code editor window
     to the file window, to the file tabs.
@@ -69,6 +69,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
         self.file_tabs = QCodeFileTabs(self)
         self.code_window = QCodeEditor(self)
+        self.code_window_find = FindAndReplaceWidget(self, self.code_window)
         self.highlighter = None
         self.set_up_file_editor()
 
@@ -224,14 +225,15 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         file_box_layout.setRowStretch(0, 1)
         self.file_box.setLayout(file_box_layout)
         layout = QGridLayout()
-        layout.addWidget(self.button_widget, 0, 0, 2, 1)
-        layout.addWidget(self.file_box, 0, 1, 2, 1)
+        layout.addWidget(self.button_widget, 0, 0, 3, 1)
+        layout.addWidget(self.file_box, 0, 1, 3, 1)
+        layout.addWidget(self.code_window_find, 1, 2, 1, 1)
         layout.addWidget(self.file_tabs, 0, 2, 1, 1)
-        layout.addWidget(self.code_window, 1, 2, 1, 1)
+        layout.addWidget(self.code_window, 2, 2, 1, 1)
         layout.setColumnStretch(0, 0)  # make button widget small
         layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
         layout.setColumnStretch(2, 5)  # make code window larger
-        layout.setRowStretch(1, 1)
+        layout.setRowStretch(2, 1)
         self.grid_layout = layout
         central_widget_holder = QWidget()
         central_widget_holder.setLayout(layout)
@@ -241,7 +243,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
 
     def set_up_from_save_state(self):
         # put default before opening files
-        self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
+        self.code_window.setPlainText(CustomIDE.NO_FILES_OPEN_TEXT)
         self.code_window.setEnabled(False)
         # open up current opened files. (one until further notice)
 
@@ -382,12 +384,17 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         redo_action.setShortcut("Ctrl+Shift+Z")
         redo_action.triggered.connect(self.code_window.redo)
 
+        find_action = QAction("Find/Replace", self)
+        find_action.setShortcut("Ctrl+Shift+F")
+        find_action.triggered.connect(self.code_window_find.show)
+
         edit_menu.addActions([
             cut_action,
             copy_action,
             paste_action,
             undo_action,
-            redo_action
+            redo_action,
+            find_action
         ])
 
         # VIEW MENU
@@ -786,7 +793,7 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         if next_selected == -1 or not self.current_opened_files:
             self.highlighter = None
             self.code_window.text_input_mode = QCodeEditor.RawTextInput
-            self.code_window.setPlainText(CustomIntegratedDevelopmentEnvironment.NO_FILES_OPEN_TEXT)
+            self.code_window.setPlainText(CustomIDE.NO_FILES_OPEN_TEXT)
             self.code_window.setEnabled(False)
 
     def delete_file(self):
@@ -943,8 +950,14 @@ class CustomIntegratedDevelopmentEnvironment(QMainWindow):
         """ Filter for focusing other widgets. Prevents this. """
         # should prevent focus switching
         # parameter 'next' renamed to '_' as 'next' shadows a builtin.
-        # todo: only return false if i'm in the code window
-        return False
+        if self.code_window.hasFocus() or self.search_bar.hasFocus():
+            return False
+
+        QMainWindow.focusNextPrevChild(self, _)
+
+        if self.code_window.hasFocus() or self.search_bar.hasFocus():
+            QMainWindow.focusNextPrevChild(self, _)
+        return True
 
     def eventFilter(self, q_object, event):
         """
@@ -978,9 +991,23 @@ def main():
     Create the QApplication window and add the Custom IDE to it.
     """
 
+    output = subprocess.Popen("cloc . --by-file --exclude-dir=venv,.idea --include-ext=py".split(" "),
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout, stderr = output.communicate()
+    stdout = stdout.decode('utf-8')
+
+    header_line = stdout.split("\n")[6].upper()
+    sum_line = stdout.split("\n")[-3]
+    while "  " in sum_line or "  " in header_line:
+        sum_line = sum_line.replace("  ", " ")
+        header_line = header_line.replace("  ", " ")
+    print(header_line)
+    print(sum_line)
+    print("TOTAL:", sum(map(int, filter(lambda x: x.isnumeric(), sum_line.split(" ")))))
+
     logging.info(f"Application started running: {datetime.datetime.now()}")
     app = QApplication(sys.argv)
-    window = CustomIntegratedDevelopmentEnvironment()
+    window = CustomIDE()
     window.show()
     exit_code = app.exec_()
     window.before_close()
