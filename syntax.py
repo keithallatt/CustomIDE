@@ -17,8 +17,8 @@ from re import escape
 import builtins
 import inspect
 import os
-import re
 import keyword
+# import re
 
 
 def format_color(color, style=''):
@@ -139,7 +139,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             # Double-quoted string, possibly containing escape sequences
             (self.string_prefix_regex + r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
             # Single-quoted string, possibly containing escape sequences
-            (self.string_prefix_regex + r"'[^'\\]*(\\.[^'\\]*)*'", 0, STYLES['string']),
+            # (self.string_prefix_regex + r"'[^'\\]*(\\.[^'\\]*)*'", 0, STYLES['string']),
 
             # From '#' until a newline
             (r'#[^\n]*', 0, STYLES['comment']),
@@ -174,7 +174,26 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         self.triple_quotes_within_strings = []
         # Do other syntax formatting
         for expression, nth, format_ in self.rules:
-            index = expression.indexIn(text, 0)
+            def get_index(input_text, start_at, ex=expression):
+                if ex.pattern().startswith(self.string_prefix_regex):
+                    second_pattern = ex.pattern().replace("\"", "'")
+                    second_pattern = QtCore.QRegExp(second_pattern)
+
+                    ind1 = ex.indexIn(input_text, start_at)
+                    ind2 = second_pattern.indexIn(input_text, start_at)
+
+                    if ind1 == -1:
+                        return ind2, second_pattern
+                    if ind2 == -1:
+                        return ind1, ex
+
+                    ex_to_return = ex if ind1 < ind2 else second_pattern
+
+                    return min(ind1, ind2), ex_to_return
+                else:
+                    return ex.indexIn(input_text, start_at), ex
+
+            index, exp_to_consider = get_index(text, 0)
             if index >= 0:
                 # if there is a string we check if there are some triple quotes
                 # within the string they will be ignored if they are matched again
@@ -187,76 +206,76 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                         triple_quote_indexes = range(inner_index, inner_index + 3)
                         self.triple_quotes_within_strings.extend(triple_quote_indexes)
 
-            if nth == 'f-strings':
-                # this is only to be used for f-strings
-                e = expression.pattern()
-                m = re.search(e, text)
-                if m is not None:
-                    beginning_index = m.start()
-                    fstring = m.group(0)
-
-                    brace_list = []
-
-                    depth = 0
-                    for i, c in enumerate(fstring):
-                        if c == "{":
-                            if depth == 0:
-                                brace_list.append(i)
-                            depth += 1
-                        if c == "}":
-                            depth -= 1
-                            if depth == 0:
-                                brace_list.append(i)
-                        if depth < 0:
-                            depth = 0
-
-                    if depth > 0:
-                        # if unbalanced, theres an extra bit at the end
-                        brace_list.pop(-1)
-
-                    brace_list = [(brace_list[i], brace_list[i+1]) for i in range(0, len(brace_list), 2)]
-
-                    for b in brace_list:
-                        self.setFormat(beginning_index + b[0], b[1] - b[0] + 1, STYLES['keyword'])
-                        self.setFormat(beginning_index + b[0] + 1, b[1] - b[0] - 1, STYLES['operator'])
-
-                        # format the insides of f-strings.
-                        for expression2, nth2, format2 in self.rules:
-                            if expression2.pattern()[-1] in "\"'":
-                                continue
-
-                            if nth2 == 'f-strings':
-                                continue
-
-                            index2 = expression2.indexIn(text, 0)
-                            while index2 >= 0:
-                                # skipping triple quotes within strings
-                                if index2 in self.triple_quotes_within_strings:
-                                    index2 += 1
-                                    expression2.indexIn(text, index2)
-                                    continue
-
-                                # We actually want the index of the nth match
-                                index2 = expression2.pos(nth2)
-                                length2 = len(expression2.cap(nth2))
-
-                                if index2 > b[0] and length2 <= b[1] - b[0]:
-                                    self.setFormat(index2, length2, format2)
-                                index2 = expression2.indexIn(text, index2 + length2)
-
-                continue
+            # if nth == 'f-strings':
+            #     # this is only to be used for f-strings
+            #     e = expression.pattern()
+            #     m = re.search(e, text)
+            #     if m is not None:
+            #         beginning_index = m.start()
+            #         fstring = m.group(0)
+            #
+            #         brace_list = []
+            #
+            #         depth = 0
+            #         for i, c in enumerate(fstring):
+            #             if c == "{":
+            #                 if depth == 0:
+            #                     brace_list.append(i)
+            #                 depth += 1
+            #             if c == "}":
+            #                 depth -= 1
+            #                 if depth == 0:
+            #                     brace_list.append(i)
+            #             if depth < 0:
+            #                 depth = 0
+            #
+            #         if depth > 0:
+            #             # if unbalanced, theres an extra bit at the end
+            #             brace_list.pop(-1)
+            #
+            #         brace_list = [(brace_list[i], brace_list[i+1]) for i in range(0, len(brace_list), 2)]
+            #
+            #         for b in brace_list:
+            #             self.setFormat(beginning_index + b[0], b[1] - b[0] + 1, STYLES['keyword'])
+            #             self.setFormat(beginning_index + b[0] + 1, b[1] - b[0] - 1, STYLES['operator'])
+            #
+            #             # format the insides of f-strings.
+            #             for expression2, nth2, format2 in self.rules:
+            #                 if expression2.pattern()[-1] in "\"'":
+            #                     continue
+            #
+            #                 if nth2 == 'f-strings':
+            #                     continue
+            #
+            #                 index2 = expression2.indexIn(text, 0)
+            #                 while index2 >= 0:
+            #                     # skipping triple quotes within strings
+            #                     if index2 in self.triple_quotes_within_strings:
+            #                         index2 += 1
+            #                         expression2.indexIn(text, index2)
+            #                         continue
+            #
+            #                     # We actually want the index of the nth match
+            #                     index2 = expression2.pos(nth2)
+            #                     length2 = len(expression2.cap(nth2))
+            #
+            #                     if index2 > b[0] and length2 <= b[1] - b[0]:
+            #                         self.setFormat(index2, length2, format2)
+            #                     index2 = expression2.indexIn(text, index2 + length2)
+            #
+            #     continue
             while index >= 0:
                 # skipping triple quotes within strings
                 if index in self.triple_quotes_within_strings:
                     index += 1
-                    expression.indexIn(text, index)
+                    index, exp_to_consider = get_index(text, index)
                     continue
 
                 # We actually want the index of the nth match
-                index = expression.pos(nth)
-                length = len(expression.cap(nth))
+                index = exp_to_consider.pos(nth)
+                length = len(exp_to_consider.cap(nth))
                 self.setFormat(index, length, format_)
-                index = expression.indexIn(text, index + length)
+                index, exp_to_consider = get_index(text, index + length)
 
         self.setCurrentBlockState(0)
         # Do multi-line strings
