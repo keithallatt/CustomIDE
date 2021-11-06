@@ -18,7 +18,7 @@ Current Feature List
  - The ability to open, edit, and save files.
  - Python and JSON syntax highlighting.
  - A toolbar and menu bar
- - Integration with some command line tools like `cloc`
+ - Integration with some command line tools like `cloc`, and `pip`
 ---
 
 There are a lot of plans for the future, but until then, this project is still very much a work in progress.
