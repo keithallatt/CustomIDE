@@ -3,18 +3,19 @@
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/pythonProject",
   "current_opened_files": [
-    "main.py"
+    "main.py",
+    "secondary.py"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "ide_theme": "custom_blue.json",
   "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 0,
+  "selected_tab": 1,
   "save_on_run": false,
   "window_geometry": [
-    1855,
-    249,
+    4012,
+    411,
     1489,
     992
   ],

@@ -19,9 +19,9 @@ import re
 import tempfile
 import warnings
 
-from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent
+from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent, QStringListModel
 from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel,
-                         QStandardItem, QFont, QCursor)
+                         QStandardItem, QFont, QCursor, QKeySequence)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
                              QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea, QMenu,
                              QApplication, QGridLayout)
@@ -56,7 +56,14 @@ class FindAndReplaceWidget(QWidget):
         self.find_next_button.clicked.connect(self.find_button_pushed)
         self.replace_button.clicked.connect(self.replace_button_pushed)
         self.replace_all_button.clicked.connect(self.replace_all_button_pushed)
-        self.hide_this.clicked.connect(self.hide)
+
+        def hide_this_function():
+            self.hide()
+            self.code_editor.setFocus()
+
+        self.hide_this.clicked.connect(hide_this_function)
+
+        self.hide_this.setShortcut(QKeySequence("Esc"))
 
         self.info_label = QLabel("0/0")
 
@@ -263,10 +270,60 @@ class QCodeEditor(QPlainTextEdit):
 
         self.text_input_mode = QCodeEditor.RawTextInput
 
+        # TESTING
+
+        self._completer = None
+        self.auto_complete_dict = dict()
+        self.all_autocomplete = []
+        # Class Instances
+        self.completion_prefix = ''
+
     def keyPressEvent(self, event):
         if self.text_input_mode == QCodeEditor.RawTextInput:
             return QPlainTextEdit.keyPressEvent(self, event)
 
+        is_shortcut = False
+
+        if self._completer is not None and self._completer.popup().isVisible():
+            # The following keys are forwarded by the completer to the widget.
+            if event.key() in [Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Backtab]:
+                # Let the completer do default behavior.
+                event.ignore()
+                return
+
+        if self._completer is None or not is_shortcut:
+            self.non_auto_complete_key_event(event)
+
+        ctrl_or_shift = event.modifiers() & (Qt.ControlModifier | Qt.ShiftModifier)
+        if self._completer is None or (ctrl_or_shift and len(event.text()) == 0):
+            return
+
+        eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="
+        has_modifier = (event.modifiers() != Qt.NoModifier) and not ctrl_or_shift
+
+        completion_prefix = self.text_under_cursor()
+
+        # print(completion_prefix)
+        self.completion_prefix = completion_prefix
+
+        if not is_shortcut and (has_modifier or len(event.text()) == 0 or
+                                len(completion_prefix) < 1 or event.text()[-1] in eow):
+            self._completer.popup().hide()
+            return
+
+        if completion_prefix != self._completer.completionPrefix():
+            # Puts the Prefix of the word youre typing into the Prefix
+            # print("setting prefix: ", repr(completion_prefix))
+            self._completer.setCompletionPrefix(completion_prefix)
+            self._completer.popup().setCurrentIndex(
+                    self._completer.completionModel().index(0, 0))
+
+        cr = self.cursorRect()
+        cr.setWidth(self._completer.popup().sizeHintForColumn(0) +
+                    self._completer.popup().verticalScrollBar().sizeHint().width())
+        self._completer.complete(cr)
+
+    def non_auto_complete_key_event(self, event):
         # make sure the text input mode was not changed to anything else.
         assert self.text_input_mode == QCodeEditor.ProgrammingMode, \
             "Mode is neither raw text input nor programming mode."
@@ -280,19 +337,24 @@ class QCodeEditor(QPlainTextEdit):
         # for navigating (up and down on top and bottom lines)
         if event.key() == Qt.Key_Down and self.blockCount() - 1 == tc.blockNumber():
             # last number
-            tc.setPosition(len(self.toPlainText()))
+            if event.modifiers() == Qt.ShiftModifier:
+                tc.setPosition(len(self.toPlainText()), QTextCursor.KeepAnchor)
+            else:
+                tc.setPosition(len(self.toPlainText()))
             self.setTextCursor(tc)
             return
         if event.key() == Qt.Key_Up and tc.blockNumber() == 0:
             # right the beginning
-            tc.setPosition(0)
+            if event.modifiers() == Qt.ShiftModifier:
+                tc.setPosition(0, QTextCursor.KeepAnchor)
+            else:
+                tc.setPosition(0)
             self.setTextCursor(tc)
             return
 
         # prevent shift-return from making extra newlines in a block (block = line in this case)
         if event.key() == Qt.Key_Return:
-            # todo: fix this, something wonky when entering at start of line after ':' line
-            current_line = self.toPlainText().split("\n")[tc.blockNumber()]
+            current_line = self.toPlainText().split("\n")[tc.blockNumber()][:tc.positionInBlock()]
 
             m = re.match(r"\s*", current_line)
             whitespace = m.group(0)
@@ -637,6 +699,49 @@ class QCodeEditor(QPlainTextEdit):
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
             block_number += 1
+
+    # Auto complete part.
+
+    def set_completer(self, c):
+        self._completer = c
+        c.setWidget(self)
+        c.setCompletionMode(QCompleter.PopupCompletion)
+        c.setCaseSensitivity(Qt.CaseInsensitive)
+        c.activated.connect(self.insert_completion)
+
+    def insert_completion(self, completion):
+        if self._completer.widget() is not self:
+            return
+
+        tc = self.textCursor()
+        extra = len(completion) - len(self._completer.completionPrefix())
+        tc.movePosition(QTextCursor.Left)
+        tc.movePosition(QTextCursor.EndOfWord)
+
+        if self.completion_prefix.lower() != completion[-extra:].lower():
+            if completion in self.auto_complete_dict.keys():
+                tc.setPosition(tc.position() - len(self._completer.completionPrefix()), QTextCursor.KeepAnchor)
+                tc.insertText(self.auto_complete_dict[completion])
+            else:
+                tc.insertText(completion[-extra:])
+                # print('The text being inserted',completion[-extra:])
+            self.setTextCursor(tc)
+            self._completer.setModel(QStringListModel(self.all_autocomplete, self._completer))
+
+    def text_under_cursor(self):
+        tc = self.textCursor()
+        tc.movePosition(QTextCursor.Left)
+        tc.select(QTextCursor.WordUnderCursor)
+
+        # TODO if inside string, return ("")
+
+        return tc.selectedText()
+
+    def focusInEvent(self, e):
+        #Open the widget where you are at in the edit
+        if self._completer is not None:
+            self._completer.setWidget(self)
+        super(QCodeEditor, self).focusInEvent(e)
 
 
 class QCodeFileTabs(QTabWidget):

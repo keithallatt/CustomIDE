@@ -21,11 +21,13 @@ import sys
 from colorsys import rgb_to_hsv, hsv_to_rgb
 from json import loads, dumps
 
-from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel
+from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel, QStringListModel
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
-                             QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel)
+                             QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
+                             QCompleter)
 
+import syntax
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog, FindAndReplaceWidget)
 
@@ -65,10 +67,13 @@ class CustomIDE(QMainWindow):
 
         self.linting_results = []
         self.current_opened_files = set()
+        self.completer_style_sheet = ""
         self.set_style_sheet()
 
         self.file_tabs = QCodeFileTabs(self)
         self.code_window = QCodeEditor(self)
+        self.completer = None
+        self.completer_model = None
         self.code_window_find = FindAndReplaceWidget(self, self.code_window)
         self.highlighter = None
         self.set_up_file_editor()
@@ -97,7 +102,7 @@ class CustomIDE(QMainWindow):
         self.set_up_menu_bar(shortcuts)
 
         self.statusBar().showMessage('Ready', 3000)
-        # right at the end, grab focus to the code editor
+        # right at the end, grab focus to the code editori
         self.file_tabs.set_syntax_highlighter()
         self.code_window.setFocus()
 
@@ -174,9 +179,33 @@ class CustomIDE(QMainWindow):
             "}"
         )
 
+        self.completer_style_sheet = f"background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};"
+
         logging.info("Set up style sheet")
 
     def set_up_file_editor(self):
+        autocomplete_prompts = syntax.PythonHighlighter.built_ins
+        autocomplete_dict = {
+            "main": "if __name__ == \"__main__\":"
+        }
+        autocomplete_prompts += list(autocomplete_dict.keys())
+
+        autocomplete_prompts.sort(key=len)
+
+        self.completer = QCompleter(self)
+        self.completer_model = QStringListModel(autocomplete_prompts, self.completer)
+        self.completer.setModel(self.completer_model)
+        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.completer.setWrapAround(False)
+        self.completer.popup().setStyleSheet(self.completer_style_sheet)
+
+        self.code_window = QCodeEditor(self)
+
+        self.code_window.all_autocomplete = autocomplete_prompts
+        self.code_window.auto_complete_dict = autocomplete_dict
+
+        self.code_window.set_completer(self.completer)
+
         self.code_window.installEventFilter(self)
         # try to get from theme, but fall back on state, and finally to Courier New 12pt
         font_name = self.ide_theme.get('editor_font_family', self.ide_state.get('editor_font_family', "Courier New"))
@@ -384,17 +413,33 @@ class CustomIDE(QMainWindow):
         redo_action.setShortcut("Ctrl+Shift+Z")
         redo_action.triggered.connect(self.code_window.redo)
 
-        find_action = QAction("Find/Replace", self)
+        def find_action_connection():
+            self.code_window_find.show()
+            self.code_window_find.find_line.setFocus()
+
+        find_action = QAction("Find", self)
         find_action.setShortcut("Ctrl+F")
-        find_action.triggered.connect(self.code_window_find.show)
+        find_action.triggered.connect(find_action_connection)
+
+        def replace_action_connection():
+            self.code_window_find.show()
+            self.code_window_find.replace_line.setFocus()
+
+        replace_action = QAction("Replace", self)
+        replace_action.setShortcut("Ctrl+R")
+        replace_action.triggered.connect(replace_action_connection)
 
         edit_menu.addActions([
             cut_action,
             copy_action,
             paste_action,
             undo_action,
-            redo_action,
-            find_action
+            redo_action
+        ])
+        edit_menu.addSeparator()
+        edit_menu.addActions([
+            find_action,
+            replace_action
         ])
 
         # VIEW MENU
