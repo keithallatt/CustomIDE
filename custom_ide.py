@@ -12,6 +12,7 @@ next steps:
  - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
      another click
  - git stuff maybe?
+ - rename files.
 
 """
 import os
@@ -143,40 +144,20 @@ class CustomIDE(QMainWindow):
             d_bg_w_c = f"#{r}{g}{b}"
 
         self.setStyleSheet(
-            "QWidget {"
-            f"  background-color: {bwc};  color: {fwc};"
-            "}"
-            "QToolTip {"
-            f"  background-color: {bwc};  color: {fwc};"
-            "}"
-            "QMainWindow {"
-            f"  background-color: {bwc};  color: {fwc};"
-            "}"
-            "QMenuBar {"
-            f"  background-color: {d_bg_w_c};  color: {fwc};"
-            "}"
-            "QMenuBar::item {"
-            f"   background-color: {d_bg_w_c};  color: {fwc}; "
-            "}"
-            "QMenuBar::item::selected { "
-            f"   background-color: {l_bg_w_c}; "
-            "}"
-            "QMenu { "
-            f"   background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};"
-            "}"
-            "QMenu::item::selected { "
-            f"   background-color: {l_bg_w_c}; "
-            "}"
+            "QWidget {"f"background-color: {bwc};  color: {fwc};""}"
+            "QToolTip {"f"background-color: {bwc};  color: {fwc};""}"
+            "QMainWindow {"f"background-color: {bwc};  color: {fwc};""}"
+            "QMenuBar {"f"background-color: {d_bg_w_c};  color: {fwc};""}"
+            "QMenuBar::item {"f"background-color: {d_bg_w_c};  color: {fwc}; ""}"
+            "QMenuBar::item::selected {"f"background-color: {l_bg_w_c}; ""}"
+            "QMenu {"f"background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};""}"
+            "QMenu::item::selected {"f"background-color: {l_bg_w_c}; ""}"
             "QTabBar::tab {"
             f"  background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {d_bg_w_c}, stop: 0.5 {bwc}); "
-            f"  padding: 4px;"
-            f"  border: 0.5px solid {l_bg_w_c};"
-            "}"
+            f"  padding: 4px; border: 0.5px solid {l_bg_w_c};""}"
             "QTabBar::tab:selected, QTabBar::tab:hover { "
             f"  background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {bwc}, stop: 0.5 {l_bg_w_c}); "
-            f"  padding: 4px;"
-            f"  border: 0.5px solid {l_bg_w_c};"
-            "}"
+            f"  padding: 4px; border: 0.5px solid {l_bg_w_c};""}"
         )
 
         self.completer_style_sheet = f"background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};"

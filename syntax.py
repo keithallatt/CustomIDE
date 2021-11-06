@@ -301,7 +301,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                             self.setFormat(index + tup[0], tup[1] - tup[0], format_)
                             if tup[0]:
                                 self.setFormat(index + tup[0] - 1, 1, STYLES['keyword'])
-                            if tup[1] != len(f_string_line):
+                            if tup[1] - len(f_string_line):
                                 self.setFormat(index + tup[1], 1, STYLES['keyword'])
                         format_after = False
 
@@ -360,7 +360,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 class JSONHighlighter(QtGui.QSyntaxHighlighter):
     """Syntax highlighter for the JSON language. """
 
-    def __init__(self, parent: QtGui.QTextDocument) -> None:
+    def __init__(self, parent: QtGui.QTextDocument, _) -> None:
         super().__init__(parent)
 
         rules = [
