@@ -736,18 +736,26 @@ class QCodeEditor(QPlainTextEdit):
     def text_under_cursor(self):
         tc = self.textCursor()
 
-        current_line = self.document().toPlainText().split("\n")[tc.blockNumber()][:tc.positionInBlock()]
-
-        tc.movePosition(QTextCursor.Left)
-        tc.select(QTextCursor.WordUnderCursor)
-
         # TODO if inside string, return ("")
 
-        if (current_line.count("'") - current_line.count("\\'")) % 2 or \
-                (current_line.count('"') - current_line.count('\\"')) % 2:
-            return ""
+        # use re package to systematically remove strings? maybe?
 
-        return tc.selectedText()
+        # if (current_line.count("'") - current_line.count("\\'")) % 2 or \
+        #         (current_line.count('"') - current_line.count('\\"')) % 2:
+        #     return ""
+
+        # current_line = self.document().toPlainText().split("\n")[tc.blockNumber()][:tc.positionInBlock()]
+
+        tc.movePosition(QTextCursor.Left)
+        left_pos = tc.position()
+
+        tc.select(QTextCursor.WordUnderCursor)
+        s, e = tc.selectionStart(), tc.selectionEnd()
+
+        if s <= left_pos < e:
+            return tc.selectedText()
+        else:
+            return ""
 
     def focusInEvent(self, e):
         # Open the widget where you are at in the edit
