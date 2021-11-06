@@ -274,7 +274,33 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                 # We actually want the index of the nth match
                 index = exp_to_consider.pos(nth)
                 length = len(exp_to_consider.cap(nth))
-                self.setFormat(index, length, format_)
+
+                format_after = True
+                if exp_to_consider.pattern().startswith(self.string_prefix_regex):
+                    f_string_line = text[index:index+length]
+                    capture_group = exp_to_consider.cap(1)
+                    if 'f' in capture_group.lower():
+                        to_format = [0]
+
+                        open_index = f_string_line.find("{")
+                        close_index = f_string_line.find("}", open_index)
+                        while open_index != -1 and close_index != -1:
+                            to_format += [open_index, close_index+1]
+                            open_index = f_string_line.find("{", close_index)
+                            close_index = f_string_line.find("}", open_index)
+                        to_format.append(len(f_string_line))
+                        to_format = [(to_format[i], to_format[i + 1]) for i in range(0, len(to_format), 2)]
+
+                        for tup in to_format:
+                            self.setFormat(index + tup[0], tup[1] - tup[0], format_)
+                            if tup[0]:
+                                self.setFormat(index + tup[0] - 1, 1, STYLES['keyword'])
+                            if tup[1] != len(f_string_line):
+                                self.setFormat(index + tup[1], 1, STYLES['keyword'])
+                        format_after = False
+
+                if format_after:
+                    self.setFormat(index, length, format_)
                 index, exp_to_consider = get_index(text, index + length)
 
         self.setCurrentBlockState(0)
