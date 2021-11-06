@@ -5,9 +5,9 @@ but could potentially be modified to work on other operating systems / desktop e
 
 ---
 
-Currently the IDE only has a dark mode (a programmer favourite), but also currently comes with 2 themes.
+Currently, the IDE only has a dark mode (a programmer favourite), but also currently comes with 2 themes.
 
-![current_ide](readme_assets/current_sample_main.png "Sample Custom IDE")
+![current_ide](readme_assets/current_sample_main.png?)
 
 As this project is still in it's early stages, a lot of the themes, color schemes, and general layout 
 are likely to change.
