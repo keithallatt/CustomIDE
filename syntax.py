@@ -285,6 +285,12 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                         open_index = f_string_line.find("{")
                         close_index = f_string_line.find("}", open_index)
                         while open_index != -1 and close_index != -1:
+                            inside_indices = f_string_line[open_index+1:close_index]
+
+                            while inside_indices.count("{") - inside_indices.count("}"):
+                                close_index = f_string_line.find("}", close_index + 1)
+                                inside_indices = f_string_line[open_index+1:close_index]
+
                             to_format += [open_index, close_index+1]
                             open_index = f_string_line.find("{", close_index)
                             close_index = f_string_line.find("}", open_index)
