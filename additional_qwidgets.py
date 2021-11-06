@@ -223,6 +223,7 @@ class FindAndReplaceWidget(QWidget):
 
 class QLineNumberArea(QWidget):
     """ The line numbers that accompany the QCodeEditor class. """
+
     def __init__(self, editor):
         super().__init__(editor)
         self.codeEditor = editor
@@ -282,6 +283,9 @@ class QCodeEditor(QPlainTextEdit):
         if self.text_input_mode == QCodeEditor.RawTextInput:
             return QPlainTextEdit.keyPressEvent(self, event)
 
+        if type(self.application.highlighter) == syntax.JSONHighlighter:
+            return self.non_auto_complete_key_event(event)
+
         is_shortcut = False
 
         if self._completer is not None and self._completer.popup().isVisible():
@@ -316,7 +320,7 @@ class QCodeEditor(QPlainTextEdit):
             # print("setting prefix: ", repr(completion_prefix))
             self._completer.setCompletionPrefix(completion_prefix)
             self._completer.popup().setCurrentIndex(
-                    self._completer.completionModel().index(0, 0))
+                self._completer.completionModel().index(0, 0))
 
         cr = self.cursorRect()
         cr.setWidth(self._completer.popup().sizeHintForColumn(0) +
@@ -498,11 +502,11 @@ class QCodeEditor(QPlainTextEdit):
 
                 tc.setPosition(s)
                 tc.insertText(matching_str[0])
-                tc.setPosition(e+1)
+                tc.setPosition(e + 1)
                 tc.insertText(matching_str[1])
 
-                tc.setPosition(s+1)
-                tc.setPosition(e+1, QTextCursor.KeepAnchor)
+                tc.setPosition(s + 1)
+                tc.setPosition(e + 1, QTextCursor.KeepAnchor)
                 self.setTextCursor(tc)
 
                 return
@@ -511,8 +515,9 @@ class QCodeEditor(QPlainTextEdit):
         if event.key() in matching_closing:
             pos = tc.position()
             next_1 = self.toPlainText()[pos:pos + 1]
-            if ord(next_1) == event.key():
-                tc.setPosition(pos+1)
+
+            if next_1 and ord(next_1) == event.key():
+                tc.setPosition(pos + 1)
                 self.setTextCursor(tc)
                 return
 
@@ -525,14 +530,14 @@ class QCodeEditor(QPlainTextEdit):
                 self.setTextCursor(tc)
                 pos = tc.position()
 
-                last_3 = self.toPlainText()[max(0, pos-3):pos]
-                last_3_1_before = self.toPlainText()[max(0, pos-4):pos-1]
+                last_3 = self.toPlainText()[max(0, pos - 3):pos]
+                last_3_1_before = self.toPlainText()[max(0, pos - 4):pos - 1]
 
                 if last_3 in ["'''", '"""'] and last_3_1_before not in ["'''", '"""']:
                     tc.insertText(last_3)
                     tc.setPosition(pos)
                 else:
-                    next_1 = self.toPlainText()[pos:pos+1]
+                    next_1 = self.toPlainText()[pos:pos + 1]
                     if next_1 == matching_str[1]:
                         tc.deleteChar()
                         tc.setPosition(pos)
@@ -546,11 +551,11 @@ class QCodeEditor(QPlainTextEdit):
 
                 tc.setPosition(s)
                 tc.insertText(matching_str[0])
-                tc.setPosition(e+1)
+                tc.setPosition(e + 1)
                 tc.insertText(matching_str[1])
 
-                tc.setPosition(s+1)
-                tc.setPosition(e+1, QTextCursor.KeepAnchor)
+                tc.setPosition(s + 1)
+                tc.setPosition(e + 1, QTextCursor.KeepAnchor)
                 self.setTextCursor(tc)
 
                 return
@@ -558,7 +563,7 @@ class QCodeEditor(QPlainTextEdit):
         # if the delete key is pressed, then check for "|" or like (|)
         if event.key() == Qt.Key_Backspace:
             pos = tc.position()
-            prev_and_next = self.toPlainText()[max(0, pos-1):pos+1]
+            prev_and_next = self.toPlainText()[max(0, pos - 1):pos + 1]
             matching_pairs = list(need_to_match.values()) + list(need_to_match_strings.values())
             if prev_and_next in matching_pairs:
                 tc.deleteChar()
@@ -572,7 +577,7 @@ class QCodeEditor(QPlainTextEdit):
             if m is not None:
                 line_len = len(current_line)
                 if line_len:
-                    for i in range((line_len-1) % 4 + 1):
+                    for i in range((line_len - 1) % 4 + 1):
                         tc.deletePreviousChar()
                     self.setTextCursor(tc)
                     return
@@ -588,7 +593,7 @@ class QCodeEditor(QPlainTextEdit):
             end_line = tc.blockNumber()
 
             tc.setPosition(start_pos)
-            lines_to_comment = self.document().toPlainText().split("\n")[start_line: end_line+1]
+            lines_to_comment = self.document().toPlainText().split("\n")[start_line: end_line + 1]
 
             # length of all lines + (len(lines_to_comment) - 1) which is number of newlines
             length_of_text = sum(map(len, lines_to_comment)) + len(lines_to_comment) - 1
@@ -706,7 +711,7 @@ class QCodeEditor(QPlainTextEdit):
         self._completer = c
         c.setWidget(self)
         c.setCompletionMode(QCompleter.PopupCompletion)
-        c.setCaseSensitivity(Qt.CaseInsensitive)
+        c.setCaseSensitivity(Qt.CaseSensitive)
         c.activated.connect(self.insert_completion)
 
     def insert_completion(self, completion):
@@ -730,15 +735,22 @@ class QCodeEditor(QPlainTextEdit):
 
     def text_under_cursor(self):
         tc = self.textCursor()
+
+        current_line = self.document().toPlainText().split("\n")[tc.blockNumber()][:tc.positionInBlock()]
+
         tc.movePosition(QTextCursor.Left)
         tc.select(QTextCursor.WordUnderCursor)
 
         # TODO if inside string, return ("")
 
+        if (current_line.count("'") - current_line.count("\\'")) % 2 or \
+                (current_line.count('"') - current_line.count('\\"')) % 2:
+            return ""
+
         return tc.selectedText()
 
     def focusInEvent(self, e):
-        #Open the widget where you are at in the edit
+        # Open the widget where you are at in the edit
         if self._completer is not None:
             self._completer.setWidget(self)
         super(QCodeEditor, self).focusInEvent(e)
@@ -746,6 +758,7 @@ class QCodeEditor(QPlainTextEdit):
 
 class QCodeFileTabs(QTabWidget):
     """ The tabbed view at the top of the code editor. """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tabs = {}
@@ -943,6 +956,7 @@ class ProjectViewer(QTreeView):
                                  f"directory {self.application.current_project_root_str}")
 
             return files_in_directory
+
         if self.application.current_project_root is None:
             return []
 

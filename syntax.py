@@ -151,8 +151,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
             # f-string insides. (with { and } )
 
-            (fstring_prefix_regex + r'"[^"]*"', 'f-strings', STYLES['keyword']),
-            (fstring_prefix_regex + r"'[^']*'", 'f-strings', STYLES['keyword']),
+            # (fstring_prefix_regex + r'"[^"]*"', 'f-strings', STYLES['keyword']),
+            # (fstring_prefix_regex + r"'[^']*'", 'f-strings', STYLES['keyword']),
 
             # (fstring_prefix_regex + r'"[^\"]*(\{[^\}]*\})[^\"]*\"', 'all', STYLES['keyword']),
             # (fstring_prefix_regex + r"'[^\']*(\{[^\}]*\})[^\']*\'", 'all', STYLES['keyword']),
