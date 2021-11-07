@@ -14,13 +14,13 @@
   "selected_tab": 1,
   "save_on_run": false,
   "window_geometry": [
-    4012,
-    411,
+    4106,
+    463,
     1489,
     992
   ],
-  "file_box_hidden": false,
-  "tool_bar_hidden": false,
+  "file_box_hidden": true,
+  "tool_bar_hidden": true,
   "tool_bar_position": "top",
   "search_completion": "popup"
 }

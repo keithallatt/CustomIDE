@@ -75,7 +75,7 @@ class CustomIDE(QMainWindow):
         self.code_window = QCodeEditor(self)
         self.completer = None
         self.completer_model = None
-        self.code_window_find = FindAndReplaceWidget(self, self.code_window)
+        self.code_window_find = FindAndReplaceWidget(self)
         self.highlighter = None
         self.set_up_file_editor()
 

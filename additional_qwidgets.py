@@ -31,11 +31,13 @@ import syntax
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 
+# TODO: find and replace isn't working rn, figure out why.
+
 class FindAndReplaceWidget(QWidget):
-    def __init__(self, parent=None, code_editor: QCodeEditor = None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.code_editor = code_editor
+        self.application = parent
 
         layout = QGridLayout()
 
@@ -59,7 +61,7 @@ class FindAndReplaceWidget(QWidget):
 
         def hide_this_function():
             self.hide()
-            self.code_editor.setFocus()
+            self.application.code_window.setFocus()
 
         self.hide_this.clicked.connect(hide_this_function)
 
@@ -98,12 +100,12 @@ class FindAndReplaceWidget(QWidget):
         return start
 
     def find_edit_changed(self, new_text):
-        if not new_text:
+        if new_text:
             self.occurrence_index = 0
-            self.num_occurrences = 0
+            self.num_occurrences = self.application.code_window.toPlainText().count(new_text)
         else:
             self.occurrence_index = 0
-            self.num_occurrences = self.code_editor.toPlainText().count(new_text)
+            self.num_occurrences = 0
 
         self.find_button_pushed()
         self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
@@ -116,15 +118,15 @@ class FindAndReplaceWidget(QWidget):
         if self.occurrence_index > self.num_occurrences:
             self.occurrence_index = 1
 
-        document_text = self.code_editor.toPlainText()
+        document_text = self.application.code_window.toPlainText()
         to_find = self.find_line.text()
         nth = self.occurrence_index
         string_index = FindAndReplaceWidget.find_nth(document_text, to_find, nth)
 
-        tc = self.code_editor.textCursor()
+        tc = self.application.code_window.textCursor()
         tc.setPosition(string_index)
         tc.setPosition(string_index + len(to_find), QTextCursor.KeepAnchor)
-        self.code_editor.setTextCursor(tc)
+        self.application.code_window.setTextCursor(tc)
 
         self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
 
@@ -133,20 +135,20 @@ class FindAndReplaceWidget(QWidget):
             return
 
         to_find_text = self.find_line.text()
-        tc = self.code_editor.textCursor()
+        tc = self.application.code_window.textCursor()
 
-        selected_text = self.code_editor.toPlainText()[tc.selectionStart():tc.selectionEnd()]
+        selected_text = self.application.code_window.toPlainText()[tc.selectionStart():tc.selectionEnd()]
 
         if to_find_text != selected_text:
             self.occurrence_index -= 1
             self.find_button_pushed()
 
-        tc = self.code_editor.textCursor()
+        tc = self.application.code_window.textCursor()
         to_replace_text = self.replace_line.text()
 
         tc.insertText(to_replace_text)
-        self.code_editor.setTextCursor(tc)
-        self.num_occurrences = self.code_editor.toPlainText().count(to_find_text)
+        self.application.code_window.setTextCursor(tc)
+        self.num_occurrences = self.application.code_window.toPlainText().count(to_find_text)
         self.occurrence_index -= 1
 
         if self.num_occurrences:
@@ -156,10 +158,10 @@ class FindAndReplaceWidget(QWidget):
         pass
 
     def replace_all_button_pushed(self):
-        tc = self.code_editor.textCursor()
+        tc = self.application.code_window.textCursor()
         tc.beginEditBlock()
 
-        all_text = self.code_editor.toPlainText()
+        all_text = self.application.code_window.toPlainText()
         to_find_text = self.find_line.text()
         current_selection_index = FindAndReplaceWidget.find_nth(all_text, to_find_text, self.occurrence_index)
 
@@ -178,7 +180,7 @@ class FindAndReplaceWidget(QWidget):
         self.info_label.setText(f"{self.occurrence_index}/{self.num_occurrences}")
 
         tc.insertText(all_after)
-        self.code_editor.setTextCursor(tc)
+        self.application.code_window.setTextCursor(tc)
 
         if to_find_text in all_before:
             dial = QDialog(self)
@@ -218,7 +220,7 @@ class FindAndReplaceWidget(QWidget):
             dial.exec()
 
         tc.endEditBlock()
-        self.code_editor.setTextCursor(tc)
+        self.application.code_window.setTextCursor(tc)
 
 
 class QLineNumberArea(QWidget):
