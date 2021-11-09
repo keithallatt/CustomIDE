@@ -6,20 +6,11 @@ Count lines with:
 
 -- NOTICE --
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
-
-next steps:
- - add q-thread or something for linting and other slow processes.
- - add multi-cursors like in VSCode, like control click to add multiple cursors, insert text at all of them until
-     another click
- - git stuff maybe?
- - rename files.
-
 """
 import os
 import re
 import subprocess
 import sys
-import time
 from colorsys import rgb_to_hsv, hsv_to_rgb
 from json import loads, dumps
 
@@ -61,7 +52,7 @@ class CustomIDE(QMainWindow):
         self.ide_theme = loads(open("ide_themes" + os.sep + self.ide_state['ide_theme'], 'r').read())
 
         shortcuts = loads(open("shortcuts.json", 'r').read())
-        self.setWindowTitle(self.ide_state.get("ide_title", "ide"))
+        self.setWindowTitle("CustomIDE")
 
         x, y, w, h = self.ide_state.get('window_geometry', [100, 100, 1000, 1000])
         self.resize(w, h)
@@ -103,16 +94,17 @@ class CustomIDE(QMainWindow):
         self.search_bar = None
         self.set_up_menu_bar(shortcuts)
 
-        self.statusBar().showMessage('Ready', 3000)
-        # right at the end, grab focus to the code editor
-        self.file_tabs.set_syntax_highlighter()
-        self.code_window.setFocus()
-
+        # get the linter working.
         self.timer = QTimer(self)
         self.linting_thread = None
         self.linting_worker = None
         self.is_linting_currently = False
         self.set_up_linting()
+
+        self.statusBar().showMessage('Ready', 3000)
+        # right at the end, grab focus to the code editor
+        self.file_tabs.set_syntax_highlighter()
+        self.code_window.setFocus()
 
     # Setup Functions
 
@@ -1037,6 +1029,8 @@ def main():
     """
     Create the QApplication window and add the Custom IDE to it.
     """
+
+    # os.chdir(os.path.dirname(__file__))
 
     output = subprocess.Popen("cloc . --by-file --exclude-dir=venv,.idea --include-ext=py".split(" "),
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

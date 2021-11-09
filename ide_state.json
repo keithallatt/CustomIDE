@@ -1,5 +1,4 @@
 {
-  "ide_title": "Custom IDE @ Keith Allatt",
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/pythonProject",
   "current_opened_files": [
@@ -14,8 +13,8 @@
   "selected_tab": 0,
   "save_on_run": false,
   "window_geometry": [
-    4106,
-    1080,
+    1092,
+    555,
     1489,
     992
   ],

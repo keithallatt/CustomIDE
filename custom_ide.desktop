@@ -1,0 +1,12 @@
+#!/usr/bin/env xdg-open
+
+[Desktop Entry]
+Version=1.0
+Name=CustomIDE
+Comment=CustomIDE is a custom IDE made by yours truly.
+Exec=/home/kallatt/PycharmProjects/CustomIDE/venv/bin/python3 /home/kallatt/PycharmProjects/CustomIDE/custom_ide.py -name CustomIDE
+Path=/home/kallatt/PycharmProjects/CustomIDE
+Icon=/home/kallatt/PycharmProjects/CustomIDE/gnome_app_icon.png
+Terminal=false
+Type=Application
+StartupWMClass=CustomIDE

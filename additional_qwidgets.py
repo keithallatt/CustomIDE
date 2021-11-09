@@ -31,8 +31,6 @@ import syntax
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 
-# TODO: find and replace isn't working rn, figure out why.
-
 class FindAndReplaceWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -758,8 +756,6 @@ class QCodeEditor(QPlainTextEdit):
 
     def text_under_cursor(self):
         tc = self.textCursor()
-
-        # TODO if inside string, return ("")
 
         # use re package to systematically remove strings? maybe?
 

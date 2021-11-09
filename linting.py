@@ -3,9 +3,6 @@
 linting.py:
 
 Use the pylint module to run on arbitrary code or files and get a list of warnings etc.
-
-TODO:
- - allow filtering of linting messages.
 """
 import tempfile
 import time
