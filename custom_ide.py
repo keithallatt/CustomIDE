@@ -19,10 +19,11 @@ import os
 import re
 import subprocess
 import sys
+import time
 from colorsys import rgb_to_hsv, hsv_to_rgb
 from json import loads, dumps
 
-from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel, QStringListModel
+from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel, QStringListModel, QTimer, QThread
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
                              QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
@@ -33,7 +34,7 @@ from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, Save
                                  SearchBar, CommandLineCallDialog, FindAndReplaceWidget)
 
 from new_project_wizard import NewProjectWizard
-from linting import run_linter_on_code
+from linting import LintingWorker
 from webbrowser import open_new_tab as open_in_browser
 import datetime
 import logging
@@ -103,9 +104,15 @@ class CustomIDE(QMainWindow):
         self.set_up_menu_bar(shortcuts)
 
         self.statusBar().showMessage('Ready', 3000)
-        # right at the end, grab focus to the code editori
+        # right at the end, grab focus to the code editor
         self.file_tabs.set_syntax_highlighter()
         self.code_window.setFocus()
+
+        self.timer = QTimer(self)
+        self.linting_thread = None
+        self.linting_worker = None
+        self.is_linting_currently = False
+        self.set_up_linting()
 
     # Setup Functions
 
@@ -152,12 +159,6 @@ class CustomIDE(QMainWindow):
             "QMenuBar::item::selected {"f"background-color: {l_bg_w_c}; ""}"
             "QMenu {"f"background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};""}"
             "QMenu::item::selected {"f"background-color: {l_bg_w_c}; ""}"
-            "QTabBar::tab {"
-            f"  background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {d_bg_w_c}, stop: 0.5 {bwc}); "
-            f"  padding: 4px; border: 0.5px solid {l_bg_w_c};""}"
-            "QTabBar::tab:selected, QTabBar::tab:hover { "
-            f"  background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 {bwc}, stop: 0.5 {l_bg_w_c}); "
-            f"  padding: 4px; border: 0.5px solid {l_bg_w_c};""}"
         )
 
         self.completer_style_sheet = f"background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};"
@@ -538,6 +539,10 @@ class CustomIDE(QMainWindow):
 
         logging.info("Set up menu bar")
 
+    def set_up_linting(self):
+        self.timer.timeout.connect(self.perform_lint)
+        self.timer.start(500)
+
     # Utility functions
 
     def _load_code(self, text):
@@ -552,17 +557,33 @@ class CustomIDE(QMainWindow):
         self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def perform_lint(self):
+        if self.is_linting_currently:
+            print("Is already linting")
+            return
+
+        self.is_linting_currently = True
+
         if self.current_project_root is None:
             self.statusBar().showMessage("No project open", 3000)
             return
 
-        if self.current_opened_file is None:
-            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
-        else:
-            lint_results = run_linter_on_code(code=self.code_window.toPlainText())
+        self.linting_thread = QThread()
+        self.linting_worker = LintingWorker(self)
 
-        self.linting_results = lint_results
-        self.code_window.linting_results = lint_results
+        self.linting_worker.moveToThread(self.linting_thread)
+
+        def worker_finished():
+            self.is_linting_currently = False
+            self.code_window.linting_results = self.linting_worker.linting_results
+            self.code_window.repaint()
+
+        self.linting_thread.started.connect(self.linting_worker.run)
+        self.linting_worker.finished.connect(self.linting_thread.quit)
+        self.linting_worker.finished.connect(self.linting_worker.deleteLater)
+        self.linting_thread.finished.connect(self.linting_thread.deleteLater)
+        self.linting_worker.finished.connect(worker_finished)
+
+        self.linting_thread.start()
 
     def perform_cloc(self):
         """ run 'cloc' on the project """
@@ -1027,9 +1048,13 @@ def main():
     while "  " in sum_line or "  " in header_line:
         sum_line = sum_line.replace("  ", " ")
         header_line = header_line.replace("  ", " ")
-    print(header_line)
-    print(sum_line)
-    print("TOTAL:", sum(map(int, filter(lambda x: x.isnumeric(), sum_line.split(" ")))))
+
+    cloc_results = dict()
+    for k, v in zip(header_line.split(" "), sum_line.split(" ")):
+        if v.isnumeric():
+            cloc_results[k] = int(v)
+    cloc_results["TOTAL"] = sum(cloc_results.values())
+    print(*[f"{k}: {v}" for k, v in cloc_results.items()], sep="\n")
 
     logging.info(f"Application started running: {datetime.datetime.now()}")
     app = QApplication(sys.argv)

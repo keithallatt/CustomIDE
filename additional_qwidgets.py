@@ -228,7 +228,7 @@ class QLineNumberArea(QWidget):
 
     def __init__(self, editor):
         super().__init__(editor)
-        self.codeEditor = editor
+        self.code_editor = editor
         self.setToolTip("tooltip")
         self.setMouseTracking(True)
         self.hovering = False
@@ -237,7 +237,7 @@ class QLineNumberArea(QWidget):
         return QSize(self.editor.line_number_area_width(), 0)
 
     def paintEvent(self, event):
-        self.codeEditor.line_number_area_paint_event(event)
+        self.code_editor.line_number_area_paint_event(event)
 
     def enterEvent(self, event):
         self.hovering = True
@@ -248,8 +248,8 @@ class QLineNumberArea(QWidget):
     def mouseMoveEvent(self, a0: QMouseEvent):
         if self.hovering:
             y = a0.y()
-            hovering_on = y // self.codeEditor.font_height + self.codeEditor.verticalScrollBar().value() + 1
-            self.setToolTip(self.codeEditor.line_number_area_linting_tooltips.get(hovering_on, ''))
+            hovering_on = y // self.code_editor.font_height + self.code_editor.verticalScrollBar().value() + 1
+            self.setToolTip(self.code_editor.line_number_area_linting_tooltips.get(hovering_on, ''))
 
 
 class QCodeEditor(QPlainTextEdit):
@@ -268,12 +268,20 @@ class QCodeEditor(QPlainTextEdit):
         self.linting_results = []
         self.line_number_area_linting_tooltips = {}
 
+        self.linting_colors = {
+            'convention': QColor("#8888dd"),
+            'warning': QColor("#99aa22"),
+            'error': QColor("#ee3322"),
+        }
+
+        self.linting_severities = [
+            'convention', 'warning', 'error'
+        ]
+
         self.application = parent
         self.font_height = 10  # approximate until starts drawing
 
         self.text_input_mode = QCodeEditor.RawTextInput
-
-        # TESTING
 
         self._completer = None
         self.auto_complete_dict = dict()
@@ -697,9 +705,22 @@ class QCodeEditor(QPlainTextEdit):
             if block.isVisible() and (bottom >= event.rect().top()):
                 number = str(block_number + 1)
 
+                severity = -3
+                for lint_result in self.linting_results:
+                    if lint_result['line_number'] == block_number + 1:
+                        severity = max(severity, self.linting_severities.index(lint_result['kind']))
+                        lint_message = lint_result['message'] + " " + lint_result['lint_code']
+                        self.line_number_area_linting_tooltips[block_number + 1] = lint_message
+                if severity < 0:
+                    lint_kind = ""
+                else:
+                    lint_kind = self.linting_severities[severity]
+
+                lint_color = self.linting_colors.get(lint_kind, line_color)
+
                 painter.fillRect(0, int(top), int(self.lineNumberArea.width()), int(height), window_color)
 
-                painter.setPen(line_color)
+                painter.setPen(lint_color)
                 painter.drawText(0, int(top), int(self.lineNumberArea.width()), int(height), Qt.AlignRight, number)
 
             block = block.next()
