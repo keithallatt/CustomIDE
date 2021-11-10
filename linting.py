@@ -19,6 +19,7 @@ class LintingWorker(QObject):
         super().__init__()
         self.application = parent
         self.linting_results = None
+        self.linting_debug_messages = False
 
     def run_linter_on_code(self, code: str = None, filename: str = None):
         """
@@ -67,7 +68,36 @@ class LintingWorker(QObject):
             print("Runtime error", str(e))
 
     def run(self):
-        self.run_linter_on_code(code=self.application.code_window.toPlainText())
+        while True:
+            if self.application.current_project_root is None:
+                if self.linting_debug_messages:
+                    print("no project: ", time.time())
+                continue
+
+            current_file = self.application.file_tabs.current_file_selected
+
+            if current_file is None:
+                if self.linting_debug_messages:
+                    print("no file: ", time.time())
+                continue
+
+            if not current_file.endswith(".py"):
+                # not viewing a python file
+                self.application.code_window.linting_results = []  # remove linting results.
+                self.application.code_window.line_number_area_linting_tooltips = dict()
+                if self.linting_debug_messages:
+                    print("non-python file: ", time.time())
+                continue
+
+            if self.linting_debug_messages:
+                print("Run iter at time: ", time.time())
+
+            try:
+                self.run_linter_on_code(code=self.application.code_window.toPlainText())
+            except RuntimeError:
+                if self.linting_debug_messages:
+                    print("Runtime error")
+                break  # maybe don't use break, but if code editor was deleted, then we should be done
 
 
 class LintDialog(QDialog):

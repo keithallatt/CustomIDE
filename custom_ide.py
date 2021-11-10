@@ -536,8 +536,12 @@ class CustomIDE(QMainWindow):
         logging.info("Set up menu bar")
 
     def set_up_linting(self):
-        self.timer.timeout.connect(self.perform_lint)
-        self.timer.start(500)
+        # self.timer.timeout.connect(self.perform_lint)
+        # self.timer.start(100)
+        self.linting_thread = QThread()
+        self.linting_worker = LintingWorker(self)
+        self.linting_worker.moveToThread(self.linting_thread)
+        self.perform_lint()
 
     # Utility functions
 
@@ -553,37 +557,18 @@ class CustomIDE(QMainWindow):
         self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def perform_lint(self):
-        if self.is_linting_currently:
-            return
-
-        if self.current_project_root is None:
-            self.statusBar().showMessage("No project open", 3000)
-            return
-
-        current_file = self.file_tabs.current_file_selected
-
-        if not current_file.endswith(".py"):
-            # not viewing a python file
-            self.code_window.linting_results = []  # remove linting results.
-            self.code_window.line_number_area_linting_tooltips = dict()
-            return
-
-        self.is_linting_currently = True
-        self.linting_thread = QThread()
-        self.linting_worker = LintingWorker(self)
-
-        self.linting_worker.moveToThread(self.linting_thread)
+        print("Performing lint")
 
         def worker_finished():
-            self.is_linting_currently = False
             self.code_window.linting_results = self.linting_worker.linting_results
             self.code_window.repaint()
+            self.is_linting_currently = False
 
         self.linting_thread.started.connect(self.linting_worker.run)
         self.linting_worker.finished.connect(self.linting_thread.quit)
+        self.linting_worker.finished.connect(worker_finished)
         self.linting_worker.finished.connect(self.linting_worker.deleteLater)
         self.linting_thread.finished.connect(self.linting_thread.deleteLater)
-        self.linting_worker.finished.connect(worker_finished)
 
         self.linting_thread.start()
 

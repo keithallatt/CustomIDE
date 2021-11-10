@@ -16,11 +16,10 @@ import inspect
 import logging
 import os
 import re
-import sys
 import tempfile
 import warnings
 
-from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent, QStringListModel, QCoreApplication
+from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent, QStringListModel
 from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel,
                          QStandardItem, QFont, QCursor, QKeySequence)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
@@ -340,7 +339,7 @@ class QCodeEditor(QPlainTextEdit):
             return
 
         if completion_prefix != self._completer.completionPrefix():
-            # Puts the Prefix of the word youre typing into the Prefix
+            # Puts the Prefix of the word you're typing into the Prefix
             # print("setting prefix: ", repr(completion_prefix))
             self._completer.setCompletionPrefix(completion_prefix)
             self._completer.popup().setCurrentIndex(
@@ -361,7 +360,9 @@ class QCodeEditor(QPlainTextEdit):
                 inside_string = True
                 break
 
-        if not inside_string:
+        if inside_string:
+            self._completer.popup().hide()
+        else:
             self._completer.complete(cr)
 
     def non_auto_complete_key_event(self, event):
@@ -1017,13 +1018,15 @@ class ProjectViewer(QTreeView):
         return QTreeView.keyPressEvent(self, event)
 
     def get_files_as_strings(self):
-        def get_files(directory_path):
+        def get_files(directory_path, max_depth=10):
+            if max_depth <= 0:
+                return []
             files_in_directory = []
             if not directory_path.endswith(os.sep):
                 directory_path += os.sep
             for f in os.listdir(directory_path):
                 if os.path.isdir(directory_path + f):
-                    files_in_directory += get_files(directory_path + f)
+                    files_in_directory += get_files(directory_path + f, max_depth=max_depth-1)
                 elif os.path.isfile(directory_path + f):
                     files_in_directory.append(directory_path + f)
                 else:

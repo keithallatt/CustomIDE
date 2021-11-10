@@ -2,6 +2,7 @@
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/pythonProject",
   "current_opened_files": [
+    "asdf.txt",
     "main.py",
     "secondary.py"
   ],
@@ -10,7 +11,7 @@
   "ide_theme": "pycharm_darcula.json",
   "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 1,
+  "selected_tab": 2,
   "save_on_run": false,
   "window_geometry": [
     1337,
