@@ -354,6 +354,8 @@ class QCodeEditor(QPlainTextEdit):
         inside_string = False
         tc_pos = tc.position()
 
+        self.string_locations += self.application.highlighter.string_locations
+
         for tup in self.string_locations:
             if tup[0] <= tc_pos <= tup[1]:
                 inside_string = True

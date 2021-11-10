@@ -104,6 +104,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         self.triple_quotes_within_strings = []
 
         self.string_locations = []
+        self._string_locations = []
 
         rules = []
 
@@ -170,7 +171,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text. """
         self.triple_quotes_within_strings = []
-        self.string_locations = []
+        self._string_locations = []
         # Do other syntax formatting
         for expression, nth, format_ in self.rules:
             def get_index(input_text, start_at, ex=expression):
@@ -220,8 +221,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                 # string matching, if before the 'f' if statement, then for any string
                 if exp_to_consider.pattern().startswith(self.string_prefix_regex):
                     # lhs bound and  rhs bound0
-                    self.string_locations.append((self.currentBlock().position() + index,
-                                                  self.currentBlock().position() + index + length))
+                    self._string_locations.append((self.currentBlock().position() + index,
+                                                   self.currentBlock().position() + index + length))
 
                     f_string_line = text[index:index+length]
                     capture_group = exp_to_consider.cap(1)
@@ -262,6 +263,10 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             # in_multiline = self.match_multiline(text, *self.tri_double)
             self.match_multiline(text, *self.tri_double)
 
+        # only resets after the entire highlighting process.
+        # should prevent polling of string locations giving partial results.
+        self.string_locations = self._string_locations
+
     def match_multiline(self, text, delimiter, in_state, style):
         """
         Do highlighting of multi-line strings. ``delimiter`` should be a
@@ -297,8 +302,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                 length = len(text) - start + add
 
             # Apply formatting and set interval for docstrings
-            self.string_locations.append((self.currentBlock().position() + start,
-                                          self.currentBlock().position() + start + length))
+            self._string_locations.append((self.currentBlock().position() + start,
+                                           self.currentBlock().position() + start + length))
 
             self.setFormat(start, length, style)
             # Look for the next match
