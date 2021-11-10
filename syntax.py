@@ -136,10 +136,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             (r'\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b', 0, STYLES['numbers']),
             (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0, STYLES['numbers']),
 
-            # Double-quoted string, possibly containing escape sequences
+            # strings, possibly containing escape sequences
             (self.string_prefix_regex + r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
-            # Single-quoted string, possibly containing escape sequences
-            # (self.string_prefix_regex + r"'[^'\\]*(\\.[^'\\]*)*'", 0, STYLES['string']),
 
             # From '#' until a newline
             (r'#[^\n]*', 0, STYLES['comment']),
@@ -148,18 +146,6 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             (r'# *todo *(\([^\n]+\))?\b[^\n]*', 0, STYLES['todo']),
             # handling todos
             (r'# *todo *\(([^\n]+)\)', 1, STYLES['todo_author']),
-
-            # f-string insides. (with { and } )
-
-            # (fstring_prefix_regex + r'"[^"]*"', 'f-strings', STYLES['keyword']),
-            # (fstring_prefix_regex + r"'[^']*'", 'f-strings', STYLES['keyword']),
-
-            # (fstring_prefix_regex + r'"[^\"]*(\{[^\}]*\})[^\"]*\"', 'all', STYLES['keyword']),
-            # (fstring_prefix_regex + r"'[^\']*(\{[^\}]*\})[^\']*\'", 'all', STYLES['keyword']),
-
-            # f-string insides. (inside { and } )
-            # (fstring_prefix_regex + r'"[^\"]*\{([^\}]*)\}[^\"]*\"', 2, STYLES['operator']),
-            # (fstring_prefix_regex + r"'[^\']*\{([^\}]*)\}[^\']*\'", 2, STYLES['operator']),
         ]
 
         rules += [(f'{b}', 0, STYLES['keyword'])

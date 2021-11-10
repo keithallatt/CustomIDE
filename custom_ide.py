@@ -553,12 +553,19 @@ class CustomIDE(QMainWindow):
             print("Is already linting")
             return
 
-        self.is_linting_currently = True
-
         if self.current_project_root is None:
             self.statusBar().showMessage("No project open", 3000)
             return
 
+        current_file = self.file_tabs.current_file_selected
+
+        if not current_file.endswith(".py"):
+            # not viewing a python file
+            self.code_window.linting_results = []  # remove linting results.
+            self.code_window.line_number_area_linting_tooltips = dict()
+            return
+
+        self.is_linting_currently = True
         self.linting_thread = QThread()
         self.linting_worker = LintingWorker(self)
 
@@ -1029,8 +1036,6 @@ def main():
     """
     Create the QApplication window and add the Custom IDE to it.
     """
-
-    # os.chdir(os.path.dirname(__file__))
 
     output = subprocess.Popen("cloc . --by-file --exclude-dir=venv,.idea --include-ext=py".split(" "),
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

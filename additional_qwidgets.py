@@ -267,7 +267,7 @@ class QCodeEditor(QPlainTextEdit):
         self.line_number_area_linting_tooltips = {}
 
         self.linting_colors = {
-            'convention': QColor("#8888dd"),
+            'convention': QColor("#5555dd"),
             'warning': QColor("#99aa22"),
             'error': QColor("#ee3322"),
         }
@@ -711,6 +711,7 @@ class QCodeEditor(QPlainTextEdit):
                         self.line_number_area_linting_tooltips[block_number + 1] = lint_message
                 if severity < 0:
                     lint_kind = ""
+                    self.line_number_area_linting_tooltips[block_number + 1] = ''
                 else:
                     lint_kind = self.linting_severities[severity]
 
@@ -904,6 +905,10 @@ class QCodeFileTabs(QTabWidget):
                                              self.application.current_project_root_str + os.sep + next_tab)
 
         self.set_syntax_highlighter(next_tab)
+        self.application.code_window.linting_results = []  # remove linting results
+        self.application.code_window.line_number_area_linting_tooltips = dict()
+        self.application.code_window.lineNumberArea.setToolTip('')
+        self.application.code_window.repaint()
 
         self.application.code_window.setPlainText(open(next_temp_file, 'r').read())
 

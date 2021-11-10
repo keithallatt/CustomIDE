@@ -3,20 +3,21 @@
   "project_dir": "~/PycharmProjects/pythonProject",
   "current_opened_files": [
     "main.py",
-    "secondary.py"
+    "secondary.py",
+    "testing_testing_123.txt"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
-  "ide_theme": "pycharm_darcula.json",
-  "syntax_highlighter": "pycharm_darcula.json",
+  "ide_theme": "custom_blue.json",
+  "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 0,
+  "selected_tab": 1,
   "save_on_run": false,
   "window_geometry": [
-    1092,
-    555,
-    1489,
-    992
+    3919,
+    1142,
+    1717,
+    904
   ],
   "file_box_hidden": false,
   "tool_bar_hidden": false,
