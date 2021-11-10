@@ -258,6 +258,8 @@ class QCodeEditor(QPlainTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.lint_width = 5
+
         self.lineNumberArea = QLineNumberArea(self)
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
@@ -268,13 +270,14 @@ class QCodeEditor(QPlainTextEdit):
         self.line_number_area_linting_tooltips = {}
 
         self.linting_colors = {
-            'convention': QColor("#5555dd"),
+            'refactor': QColor("#765432"),
+            'convention': QColor("#222266"),
             'warning': QColor("#99aa22"),
             'error': QColor("#ee3322"),
         }
 
         self.linting_severities = [
-            'convention', 'warning', 'error'
+            'convention', 'refactor', 'warning', 'error'
         ]
 
         self.application = parent
@@ -677,7 +680,7 @@ class QCodeEditor(QPlainTextEdit):
     def line_number_area_width(self):
         digits = len(str(self.blockCount()))  # get number of characters in the last value.
         space = 3 + self.fontMetrics().width('9') * digits
-        return space
+        return space + self.lint_width
 
     def update_line_number_area_width(self, _):
         self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
@@ -732,20 +735,29 @@ class QCodeEditor(QPlainTextEdit):
                 severity = -3
                 for lint_result in self.linting_results:
                     if lint_result['line_number'] == block_number + 1:
-                        severity = max(severity, self.linting_severities.index(lint_result['kind']))
+                        lint_kind_severity = -1
+                        if lint_result['kind'] in self.linting_severities:
+                            lint_kind_severity = self.linting_severities.index(lint_result['kind'])
+
                         lint_message = lint_result['message'] + " " + lint_result['lint_code']
-                        self.line_number_area_linting_tooltips[block_number + 1] = lint_message
+
+                        if lint_kind_severity >= severity:
+                            self.line_number_area_linting_tooltips[block_number + 1] = lint_message
+                            severity = lint_kind_severity
+
                 if severity < 0:
                     lint_kind = ""
                     self.line_number_area_linting_tooltips[block_number + 1] = ''
                 else:
                     lint_kind = self.linting_severities[severity]
 
-                lint_color = self.linting_colors.get(lint_kind, line_color)
+                lint_color = self.linting_colors.get(lint_kind, window_color)
 
-                painter.fillRect(0, int(top), int(self.lineNumberArea.width()), int(height), window_color)
+                painter.fillRect(0, int(top), self.lint_width, int(height), lint_color)
+                painter.fillRect(self.lint_width, int(top), int(self.lineNumberArea.width()) - self.lint_width,
+                                 int(height), window_color)
 
-                painter.setPen(lint_color)
+                painter.setPen(line_color)
                 painter.drawText(0, int(top), int(self.lineNumberArea.width()), int(height), Qt.AlignRight, number)
 
             block = block.next()
@@ -771,13 +783,12 @@ class QCodeEditor(QPlainTextEdit):
         tc.movePosition(QTextCursor.Left)
         tc.movePosition(QTextCursor.EndOfWord)
 
-        if self.completion_prefix.lower() != completion[-extra:].lower():
-            if completion in self.auto_complete_dict.keys():
-                tc.setPosition(tc.position() - len(self._completer.completionPrefix()), QTextCursor.KeepAnchor)
-                tc.insertText(self.auto_complete_dict[completion])
-            else:
-                tc.insertText(completion[-extra:])
-                # print('The text being inserted',completion[-extra:])
+        if completion in self.auto_complete_dict.keys():
+            tc.setPosition(tc.position() - len(self._completer.completionPrefix()), QTextCursor.KeepAnchor)
+            tc.insertText(self.auto_complete_dict[completion])
+        elif self.completion_prefix.lower() != completion[-extra:].lower():
+            tc.insertText(completion[-extra:])
+            # print('The text being inserted',completion[-extra:])
             self.setTextCursor(tc)
             self._completer.setModel(QStringListModel(self.all_autocomplete, self._completer))
 

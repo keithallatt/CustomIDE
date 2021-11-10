@@ -160,8 +160,12 @@ class CustomIDE(QMainWindow):
     def set_up_file_editor(self):
         autocomplete_prompts = syntax.PythonHighlighter.built_ins
         autocomplete_dict = {
-            "main": "if __name__ == \"__main__\":"
+            "main": "if __name__ == \"__main__\":",
+            "compl": "[_ for _ in []]",
+            "compg": "(_ for _ in [])",
+            "compd": "{_: _ for _ in []}",
         }
+
         autocomplete_prompts += list(autocomplete_dict.keys())
 
         autocomplete_prompts.sort(key=len)
