@@ -1013,20 +1013,21 @@ class ProjectViewer(QTreeView):
         if event.key() == Qt.Key_Return:
             self.application.open_file()
 
-        self.get_files_as_strings()
+        # self.get_files_as_strings()
 
         return QTreeView.keyPressEvent(self, event)
 
     def get_files_as_strings(self):
-        def get_files(directory_path, max_depth=10):
-            if max_depth <= 0:
+        def get_files(directory_path):
+            if directory_path.split(os.sep)[-1] == "venv":
                 return []
+
             files_in_directory = []
             if not directory_path.endswith(os.sep):
                 directory_path += os.sep
             for f in os.listdir(directory_path):
                 if os.path.isdir(directory_path + f):
-                    files_in_directory += get_files(directory_path + f, max_depth=max_depth-1)
+                    files_in_directory += get_files(directory_path + f)
                 elif os.path.isfile(directory_path + f):
                     files_in_directory.append(directory_path + f)
                 else:

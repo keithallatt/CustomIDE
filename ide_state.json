@@ -1,17 +1,16 @@
 {
   "projects_folder": "~/PycharmProjects",
-  "project_dir": "~/PycharmProjects/pythonProject",
+  "project_dir": "~/PycharmProjects/Rishana",
   "current_opened_files": [
-    "asdf.txt",
-    "main.py",
-    "secondary.py"
+    "basic_io.py",
+    "flow_of_control_2.py"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "ide_theme": "pycharm_darcula.json",
   "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 2,
+  "selected_tab": 1,
   "save_on_run": false,
   "window_geometry": [
     1337,

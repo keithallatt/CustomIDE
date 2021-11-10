@@ -95,8 +95,7 @@ class LintingWorker(QObject):
             try:
                 self.run_linter_on_code(code=self.application.code_window.toPlainText())
             except RuntimeError:
-                if self.linting_debug_messages:
-                    print("Runtime error")
+                print("Runtime error")
                 break  # maybe don't use break, but if code editor was deleted, then we should be done
 
 
