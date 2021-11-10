@@ -853,6 +853,23 @@ class CustomIDE(QMainWindow):
             self.code_window.setPlainText(CustomIDE.NO_FILES_OPEN_TEXT)
             self.code_window.setEnabled(False)
 
+    def rename_file(self):
+        filepath = self.get_file_from_viewer()
+
+        file_root = os.path.dirname(filepath)
+        filename = filepath[len(file_root)+1:]
+
+        new_name, ok = QInputDialog.getText(self, f'Rename File', 'File name:')
+
+        if ok:
+            if '.' not in new_name:
+                extension = os.path.splitext(filename)[1]
+                new_name += extension
+
+            new_file_name = os.sep.join([file_root, new_name])
+
+            os.rename(filepath, new_file_name)
+
     def delete_file(self):
         filepath = self.get_file_from_viewer()
 

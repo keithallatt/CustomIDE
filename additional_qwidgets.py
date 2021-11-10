@@ -992,6 +992,7 @@ class ProjectViewer(QTreeView):
 
             open_action = menu.addAction("Open File")
             copy_filepath_action = menu.addAction("Copy Filepath")
+            rename_action = menu.addAction("Rename File")
             delete_action = menu.addAction("Delete File")
 
             action = menu.exec_(QCursor.pos())
@@ -1000,6 +1001,8 @@ class ProjectViewer(QTreeView):
                 self.application.open_file()
             elif action == delete_action:
                 self.application.delete_file()
+            elif action == rename_action:
+                self.application.rename_file()
             elif action == copy_filepath_action:
                 QApplication.clipboard().setText(self.application.get_file_from_viewer())
 
