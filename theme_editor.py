@@ -154,19 +154,19 @@ class ThemeEditor(QMainWindow):
 
         self.application.set_theme(kind, theme)
 
-        dial = QDialog(self)
-        dial.setWindowTitle("")
-
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Close)
-        button_box.accepted.connect(lambda: QApplication.exit(0))
-        button_box.rejected.connect(dial.accept)
-
-        layout = QVBoxLayout()
-        message = QLabel("Changes will take effect on restart. Quit now?")
-        layout.addWidget(message)
-        layout.addWidget(button_box)
-        dial.setLayout(layout)
-        dial.exec()
+        # dial = QDialog(self)
+        # dial.setWindowTitle("")
+        #
+        # button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Close)
+        # button_box.accepted.connect(lambda: QApplication.exit(0))
+        # button_box.rejected.connect(dial.accept)
+        #
+        # layout = QVBoxLayout()
+        # message = QLabel("Changes will take effect on restart. Quit now?")
+        # layout.addWidget(message)
+        # layout.addWidget(button_box)
+        # dial.setLayout(layout)
+        # dial.exec()
 
     def save_values(self):
         filename = self.theme_kind.currentText().replace(" ", "_").lower() + os.sep + self.theme_list.currentText()

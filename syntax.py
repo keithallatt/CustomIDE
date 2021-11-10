@@ -18,7 +18,6 @@ import builtins
 import inspect
 import os
 import keyword
-# import re
 
 
 def format_color(color, style=''):
@@ -38,12 +37,24 @@ def format_color(color, style=''):
 
 
 # syntax styles like for keywords or for operators / built-ins.
-STYLES = {
-    k: format_color(*v) for k, v in loads(
-        open("syntax_highlighters" + os.sep +
-             loads(open("ide_state.json", 'r').read())['syntax_highlighter'], 'r').read()
-    ).items()
-}
+STYLES = dict()
+
+
+def reset_styles(ide_state: dict = None):
+    global STYLES
+
+    if ide_state is None:
+        ide_state = loads(open("ide_state.json", 'r').read())
+
+    STYLES = {
+        k: format_color(*v) for k, v in loads(
+            open("syntax_highlighters" + os.sep +
+                 ide_state['syntax_highlighter'], 'r').read()
+        ).items()
+    }
+
+
+reset_styles()
 
 
 class PythonHighlighter(QtGui.QSyntaxHighlighter):
@@ -85,7 +96,6 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         super().__init__(parent)
         # things for like f"thing {var}" or r"raw string"
         self.string_prefix_regex = r"(r|u|R|U|f|F|fr|Fr|fR|FR|rf|rF|Rf|RF|b|B|br|Br|bR|BR|rb|rB|Rb|RB)?"
-        fstring_prefix_regex = r"(f|F|fr|Fr|fR|FR|rf|rF|Rf|RF)"
 
         # Multi-line strings (expression, flag, style)
         self.tri_single = (QtCore.QRegExp(self.string_prefix_regex + "'''"), 1, STYLES['string2'])

@@ -752,10 +752,18 @@ class CustomIDE(QMainWindow):
         return True
 
     def set_theme(self, k, v):
+        # preprocess key value from ide_themes to ide_theme etc.
         assert k.endswith('s')
         k = k[:-1]
         assert k in self.ide_state.keys(), f"{k}"
+
         self.ide_state[k] = v
+
+        self.ide_theme = loads(open("ide_themes" + os.sep + self.ide_state['ide_theme'], 'r').read())
+        self.set_style_sheet()
+        syntax.reset_styles(self.ide_state)
+        self.file_tabs.set_syntax_highlighter()
+        self.code_window.repaint()
 
     def show_theme_editor(self):
         window = ThemeEditor(self)

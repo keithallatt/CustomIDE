@@ -788,7 +788,6 @@ class QCodeEditor(QPlainTextEdit):
             tc.insertText(self.auto_complete_dict[completion])
         elif self.completion_prefix.lower() != completion[-extra:].lower():
             tc.insertText(completion[-extra:])
-            # print('The text being inserted',completion[-extra:])
             self.setTextCursor(tc)
             self._completer.setModel(QStringListModel(self.all_autocomplete, self._completer))
 
