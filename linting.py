@@ -61,7 +61,10 @@ class LintingWorker(QObject):
             })
 
         self.linting_results = all_results
-        self.finished.emit()
+        try:
+            self.finished.emit()
+        except RuntimeError as e:
+            print("Runtime error", str(e))
 
     def run(self):
         self.run_linter_on_code(code=self.application.code_window.toPlainText())

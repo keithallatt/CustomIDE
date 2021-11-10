@@ -287,12 +287,20 @@ class QCodeEditor(QPlainTextEdit):
         # Class Instances
         self.completion_prefix = ''
 
+        self.string_locations = []
+
     def keyPressEvent(self, event):
         if self.text_input_mode == QCodeEditor.RawTextInput:
             return QPlainTextEdit.keyPressEvent(self, event)
 
         if type(self.application.highlighter) == syntax.JSONHighlighter:
             return self.non_auto_complete_key_event(event)
+
+        # if deleting, preserve old locations, updates more in non_auto_complete_key_event
+        if event.key() == Qt.Key_Backspace:
+            self.string_locations += self.application.highlighter.string_locations
+        else:
+            self.string_locations = self.application.highlighter.string_locations
 
         is_shortcut = False
 
@@ -307,6 +315,7 @@ class QCodeEditor(QPlainTextEdit):
             self.non_auto_complete_key_event(event)
 
         ctrl_or_shift = event.modifiers() & (Qt.ControlModifier | Qt.ShiftModifier)
+
         if self._completer is None or (ctrl_or_shift and len(event.text()) == 0):
             return
 
@@ -314,8 +323,6 @@ class QCodeEditor(QPlainTextEdit):
         has_modifier = (event.modifiers() != Qt.NoModifier) and not ctrl_or_shift
 
         completion_prefix = self.text_under_cursor()
-
-        # print(completion_prefix)
         self.completion_prefix = completion_prefix
 
         if not is_shortcut and (has_modifier or len(event.text()) == 0 or
@@ -333,7 +340,18 @@ class QCodeEditor(QPlainTextEdit):
         cr = self.cursorRect()
         cr.setWidth(self._completer.popup().sizeHintForColumn(0) +
                     self._completer.popup().verticalScrollBar().sizeHint().width())
-        self._completer.complete(cr)
+
+        tc = self.textCursor()
+        inside_string = False
+        tc_pos = tc.position()
+
+        for tup in self.string_locations:
+            if tup[0] <= tc_pos <= tup[1]:
+                inside_string = True
+                break
+
+        if not inside_string:
+            self._completer.complete(cr)
 
     def non_auto_complete_key_event(self, event):
         # make sure the text input mode was not changed to anything else.
@@ -570,9 +588,11 @@ class QCodeEditor(QPlainTextEdit):
 
         # if the delete key is pressed, then check for "|" or like (|)
         if event.key() == Qt.Key_Backspace:
+            self.application.highlighter.rehighlightBlock(tc.block())
             pos = tc.position()
             prev_and_next = self.toPlainText()[max(0, pos - 1):pos + 1]
             matching_pairs = list(need_to_match.values()) + list(need_to_match_strings.values())
+
             if prev_and_next in matching_pairs:
                 tc.deleteChar()
                 tc.deletePreviousChar()
@@ -758,21 +778,23 @@ class QCodeEditor(QPlainTextEdit):
     def text_under_cursor(self):
         tc = self.textCursor()
 
-        # use re package to systematically remove strings? maybe?
-
-        # if (current_line.count("'") - current_line.count("\\'")) % 2 or \
-        #         (current_line.count('"') - current_line.count('\\"')) % 2:
+        # inside_string = False
+        # tc_pos = tc.position()
+        #
+        # for tup in self.application.highlighter.string_locations:
+        #     if tup[0] <= tc_pos <= tup[1]:
+        #         inside_string = True
+        #         break
+        # if inside_string:
         #     return ""
 
-        # current_line = self.document().toPlainText().split("\n")[tc.blockNumber()][:tc.positionInBlock()]
-
         tc.movePosition(QTextCursor.Left)
-        left_pos = tc.position()
+        tc_pos = tc.position()
 
         tc.select(QTextCursor.WordUnderCursor)
         s, e = tc.selectionStart(), tc.selectionEnd()
 
-        if s <= left_pos < e:
+        if s <= tc_pos < e:
             return tc.selectedText()
         else:
             return ""

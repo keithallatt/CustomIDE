@@ -93,6 +93,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
         self.triple_quotes_within_strings = []
 
+        self.string_locations = []
+
         rules = []
 
         # Keyword, operator, and brace rules
@@ -158,6 +160,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text. """
         self.triple_quotes_within_strings = []
+        self.string_locations = []
         # Do other syntax formatting
         for expression, nth, format_ in self.rules:
             def get_index(input_text, start_at, ex=expression):
@@ -192,64 +195,6 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                         triple_quote_indexes = range(inner_index, inner_index + 3)
                         self.triple_quotes_within_strings.extend(triple_quote_indexes)
 
-            # if nth == 'f-strings':
-            #     # this is only to be used for f-strings
-            #     e = expression.pattern()
-            #     m = re.search(e, text)
-            #     if m is not None:
-            #         beginning_index = m.start()
-            #         fstring = m.group(0)
-            #
-            #         brace_list = []
-            #
-            #         depth = 0
-            #         for i, c in enumerate(fstring):
-            #             if c == "{":
-            #                 if depth == 0:
-            #                     brace_list.append(i)
-            #                 depth += 1
-            #             if c == "}":
-            #                 depth -= 1
-            #                 if depth == 0:
-            #                     brace_list.append(i)
-            #             if depth < 0:
-            #                 depth = 0
-            #
-            #         if depth > 0:
-            #             # if unbalanced, theres an extra bit at the end
-            #             brace_list.pop(-1)
-            #
-            #         brace_list = [(brace_list[i], brace_list[i+1]) for i in range(0, len(brace_list), 2)]
-            #
-            #         for b in brace_list:
-            #             self.setFormat(beginning_index + b[0], b[1] - b[0] + 1, STYLES['keyword'])
-            #             self.setFormat(beginning_index + b[0] + 1, b[1] - b[0] - 1, STYLES['operator'])
-            #
-            #             # format the insides of f-strings.
-            #             for expression2, nth2, format2 in self.rules:
-            #                 if expression2.pattern()[-1] in "\"'":
-            #                     continue
-            #
-            #                 if nth2 == 'f-strings':
-            #                     continue
-            #
-            #                 index2 = expression2.indexIn(text, 0)
-            #                 while index2 >= 0:
-            #                     # skipping triple quotes within strings
-            #                     if index2 in self.triple_quotes_within_strings:
-            #                         index2 += 1
-            #                         expression2.indexIn(text, index2)
-            #                         continue
-            #
-            #                     # We actually want the index of the nth match
-            #                     index2 = expression2.pos(nth2)
-            #                     length2 = len(expression2.cap(nth2))
-            #
-            #                     if index2 > b[0] and length2 <= b[1] - b[0]:
-            #                         self.setFormat(index2, length2, format2)
-            #                     index2 = expression2.indexIn(text, index2 + length2)
-            #
-            #     continue
             while index >= 0:
                 # skipping triple quotes within strings
                 if index in self.triple_quotes_within_strings:
@@ -262,7 +207,12 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                 length = len(exp_to_consider.cap(nth))
 
                 format_after = True
+                # string matching, if before the 'f' if statement, then for any string
                 if exp_to_consider.pattern().startswith(self.string_prefix_regex):
+                    # lhs bound and  rhs bound0
+                    self.string_locations.append((self.currentBlock().position() + index,
+                                                  self.currentBlock().position() + index + length))
+
                     f_string_line = text[index:index+length]
                     capture_group = exp_to_consider.cap(1)
                     if 'f' in capture_group.lower():
@@ -303,7 +253,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             self.match_multiline(text, *self.tri_double)
 
     def match_multiline(self, text, delimiter, in_state, style):
-        """Do highlighting of multi-line strings. ``delimiter`` should be a
+        """
+        Do highlighting of multi-line strings. ``delimiter`` should be a
         ``QRegExp`` for triple-single-quotes or triple-double-quotes, and
         ``in_state`` should be a unique integer to represent the corresponding
         state changes when inside those strings. Returns True if we're still
@@ -335,7 +286,10 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
                 self.setCurrentBlockState(in_state)
                 length = len(text) - start + add
 
-            # Apply formatting
+            # Apply formatting and set interval for docstrings
+            self.string_locations.append((self.currentBlock().position() + start,
+                                          self.currentBlock().position() + start + length))
+
             self.setFormat(start, length, style)
             # Look for the next match
             start = delimiter.indexIn(text, start + length)

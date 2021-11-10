@@ -550,7 +550,6 @@ class CustomIDE(QMainWindow):
 
     def perform_lint(self):
         if self.is_linting_currently:
-            print("Is already linting")
             return
 
         if self.current_project_root is None:
