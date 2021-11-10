@@ -1055,14 +1055,22 @@ def main():
     print(*[f"{k}: {v}" for k, v in cloc_results.items()], sep="\n")
 
     logging.info(f"Application started running: {datetime.datetime.now()}")
-    app = QApplication(sys.argv)
-    window = CustomIDE()
-    window.show()
-    exit_code = app.exec_()
-    window.before_close()
-    logging.info(f"Application finished running: {datetime.datetime.now()}")
 
-    sys.exit(exit_code)
+    try:
+        app = QApplication(sys.argv)
+        window = CustomIDE()
+        window.show()
+        exit_code = app.exec_()
+
+        window.before_close()
+        logging.info(f"Application finished running: {datetime.datetime.now()}")
+
+        sys.exit(exit_code)
+    except Exception as e:
+        logging.error("  ".join([
+            "Fatal error occured in running application:",
+            e.__str__()
+        ]))
 
 
 if __name__ == '__main__':

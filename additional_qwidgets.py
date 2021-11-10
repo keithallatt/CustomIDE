@@ -16,10 +16,11 @@ import inspect
 import logging
 import os
 import re
+import sys
 import tempfile
 import warnings
 
-from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent, QStringListModel
+from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent, QStringListModel, QCoreApplication
 from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel,
                          QStandardItem, QFont, QCursor, QKeySequence)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
@@ -318,6 +319,11 @@ class QCodeEditor(QPlainTextEdit):
 
         if self._completer is None or (ctrl_or_shift and len(event.text()) == 0):
             return
+
+        if self._completer.popup().isVisible():
+            if event.key() == Qt.Key_Q and event.modifiers() == Qt.ControlModifier:
+                # was weird sigsev at one point, if happens again, look into it.
+                QApplication.exit(0)
 
         eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="
         has_modifier = (event.modifiers() != Qt.NoModifier) and not ctrl_or_shift
