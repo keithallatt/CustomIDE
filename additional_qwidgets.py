@@ -1042,9 +1042,6 @@ class ProjectViewer(QTreeView):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return:
             self.application.open_file()
-
-        # self.get_files_as_strings()
-
         return QTreeView.keyPressEvent(self, event)
 
     def get_files_as_strings(self):

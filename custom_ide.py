@@ -18,7 +18,7 @@ from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel, QSt
 from PyQt5.QtGui import QFont, QFontInfo
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
                              QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
-                             QCompleter)
+                             QCompleter, QHBoxLayout, QSplitter)
 
 import syntax
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
@@ -81,7 +81,8 @@ class CustomIDE(QMainWindow):
         self.file_window_show_column_info = 1, 2
         self.grid_layout = None
 
-        self.button_widget = QWidget()
+        self.main_box = QWidget(self)
+        self.splitter = None
         self.set_up_layout()
 
         self.set_up_from_save_state()
@@ -231,16 +232,27 @@ class CustomIDE(QMainWindow):
         file_box_layout.setColumnStretch(0, 1)
         file_box_layout.setRowStretch(0, 1)
         self.file_box.setLayout(file_box_layout)
-        layout = QGridLayout()
-        layout.addWidget(self.button_widget, 0, 0, 3, 1)
-        layout.addWidget(self.file_box, 0, 1, 3, 1)
-        layout.addWidget(self.code_window_find, 1, 2, 1, 1)
-        layout.addWidget(self.file_tabs, 0, 2, 1, 1)
-        layout.addWidget(self.code_window, 2, 2, 1, 1)
-        layout.setColumnStretch(0, 0)  # make button widget small
-        layout.setColumnStretch(*self.file_window_show_column_info)  # make file window ok
-        layout.setColumnStretch(2, 5)  # make code window larger
-        layout.setRowStretch(2, 1)
+
+        main_box_layout = QVBoxLayout()
+        main_box_layout.addWidget(self.file_tabs)
+        main_box_layout.addWidget(self.code_window_find)
+        main_box_layout.addWidget(self.code_window)
+        main_box_layout.setStretch(2, 5)
+        self.main_box.setLayout(main_box_layout)
+
+        self.splitter = QSplitter(Qt.Orientation.Horizontal, self)
+
+        splitter_handle_pos = self.ide_state.get('project_viewer_splitter_pos', 300)
+        _, _, window_width, _ = self.ide_state.get('window_geometry', [0, 0, 1000, 0])
+
+        self.splitter.addWidget(self.file_box)
+        self.splitter.addWidget(self.main_box)
+
+        self.splitter.setSizes([splitter_handle_pos, window_width - splitter_handle_pos])
+
+        layout = QHBoxLayout()
+        layout.addWidget(self.splitter)
+
         self.grid_layout = layout
         central_widget_holder = QWidget()
         central_widget_holder.setLayout(layout)
@@ -318,6 +330,10 @@ class CustomIDE(QMainWindow):
         new_file_action.setShortcut(shortcuts.get("new", "Ctrl+N"))
         new_file_action.triggered.connect(self.new_file)
 
+        new_from_template_action = QAction("New From Template", self)
+        new_from_template_action.setShortcut(shortcuts.get("new_from_template", "Ctrl+Shift+N"))
+        new_from_template_action.triggered.connect(self.new_from_template)
+
         # set Ctrl-W to be the close shortcut.
         close_file_action = QAction("Close", self)
         close_file_action.setShortcut(shortcuts.get("close", "Ctrl+W"))
@@ -330,17 +346,17 @@ class CustomIDE(QMainWindow):
 
         # set Ctrl-Shift-N to be the new project shortcut.
         new_project_action = QAction("New Project", self)
-        new_project_action.setShortcut(shortcuts.get("new_project", "Ctrl+Shift+N"))
+        # new_project_action.setShortcut(shortcuts.get("new_project", "Ctrl+Shift+N"))
         new_project_action.triggered.connect(self.new_project)
 
         # set Ctrl-Shift-O to be the open project shortcut.
         open_project_action = QAction("Open Project", self)
-        open_project_action.setShortcut(shortcuts.get("open_project", "Ctrl+Shift+O"))
+        # open_project_action.setShortcut(shortcuts.get("open_project", "Ctrl+Shift+O"))
         open_project_action.triggered.connect(self.open_project)
 
         # set Ctrl-Shift-W to be the close project shortcut.
         close_project_action = QAction("Close Project", self)
-        close_project_action.setShortcut(shortcuts.get("close_project", "Ctrl+Shift+W"))
+        # close_project_action.setShortcut(shortcuts.get("close_project", "Ctrl+Shift+W"))
         close_project_action.triggered.connect(self.close_project)
 
         focus_search_bar_action = QAction("Search Files", self)
@@ -353,6 +369,7 @@ class CustomIDE(QMainWindow):
 
         file_menu.addActions([
             new_file_action,
+            new_from_template_action,
             close_file_action,
             save_file_action,
         ])
@@ -370,6 +387,9 @@ class CustomIDE(QMainWindow):
         # EDIT MENU
 
         edit_menu = self.menu_bar.addMenu('&Edit')
+
+        # maybe wrap cut and copy in decorator to select the current line if no text is selected
+        # should be in self.code_window, not here.
 
         cut_action = QAction("Cut", self)
         cut_action.setShortcut("Ctrl+X")
@@ -449,12 +469,10 @@ class CustomIDE(QMainWindow):
 
         def show_hide_files_widget():
             if self.file_box.isHidden():
-                self.grid_layout.setColumnStretch(*self.file_window_show_column_info)
                 self.file_box.show()
                 show_files_action.setChecked(True)
             else:
                 self.file_box.hide()
-                self.grid_layout.setColumnStretch(self.file_window_show_column_info[0], 0)
                 show_files_action.setChecked(False)
 
         show_files_action.triggered.connect(show_hide_files_widget)
@@ -483,7 +501,6 @@ class CustomIDE(QMainWindow):
         run_action.triggered.connect(self.run_function)
 
         run_menu.addAction(run_action)
-
 
         # TOOLS MENU
 
@@ -576,8 +593,6 @@ class CustomIDE(QMainWindow):
         self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def perform_lint(self):
-        print("Performing lint")
-
         def worker_finished():
             self.code_window.linting_results = self.linting_worker.linting_results
             self.code_window.repaint()
@@ -699,11 +714,15 @@ class CustomIDE(QMainWindow):
 
         self.ide_state['tool_bar_position'] = tool_bar_position
 
-        size = self.size()
-        position = self.pos()
+        def get_geometry(obj):
+            size = obj.size()
+            position = obj.pos()
+            geometry = [position.x(), position.y(), size.width(), size.height()]
+            return geometry
 
-        geometry = [position.x(), position.y(), size.width(), size.height()]
-        self.ide_state['window_geometry'] = geometry
+        self.ide_state['window_geometry'] = get_geometry(self)
+
+        self.ide_state['project_viewer_splitter_pos'] = self.splitter.handle(1).pos().x()
 
         json_str = dumps(self.ide_state, indent=2)
         open("ide_state.json", 'w').write(json_str)
@@ -800,6 +819,15 @@ class CustomIDE(QMainWindow):
             self.search_bar.set_data()
         else:
             return
+
+    def new_from_template(self):
+        # choose template
+
+        # create new file
+
+        # copy text from
+
+        pass
 
     def open_file(self, filepath: str = None):
         # if used for shortcut
@@ -1104,6 +1132,7 @@ def main():
             "Fatal error occured in running application:",
             e.__str__()
         ]))
+        raise e
 
 
 if __name__ == '__main__':
