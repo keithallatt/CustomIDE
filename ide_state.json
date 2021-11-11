@@ -1,20 +1,21 @@
 {
   "projects_folder": "~/PycharmProjects",
-  "project_dir": "~/PycharmProjects/Rishana",
+  "project_dir": "~/PycharmProjects/pythonProject",
   "current_opened_files": [
-    "basic_io.py",
-    "flow_of_control_2.py"
+    "main.py",
+    "secondary.py",
+    "lol.py"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
-  "ide_theme": "pycharm_darcula.json",
-  "syntax_highlighter": "custom_blue.json",
+  "ide_theme": "custom_blue.json",
+  "syntax_highlighter": "pycharm_darcula.json",
   "save_on_close_automatically": false,
   "selected_tab": 1,
   "save_on_run": false,
   "window_geometry": [
-    1337,
-    462,
+    3943,
+    1175,
     1717,
     904
   ],

@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QS
                              QApplication, QGridLayout)
 
 import syntax
+from linting import LintingHelper
 
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
@@ -230,6 +231,8 @@ class QLineNumberArea(QWidget):
         self.setToolTip("tooltip")
         self.setMouseTracking(True)
         self.hovering = False
+        self.current_code = None
+        self.current_message = None
 
     def sizeHint(self):
         return QSize(self.editor.line_number_area_width(), 0)
@@ -244,10 +247,40 @@ class QLineNumberArea(QWidget):
         self.hovering = False
 
     def mouseMoveEvent(self, a0: QMouseEvent):
-        if self.hovering:
-            y = a0.y()
-            hovering_on = y // self.code_editor.font_height + self.code_editor.verticalScrollBar().value() + 1
-            self.setToolTip(self.code_editor.line_number_area_linting_tooltips.get(hovering_on, ''))
+        if not self.hovering:
+            return
+
+        y = a0.y()
+        hovering_on = y // self.code_editor.font_height + self.code_editor.verticalScrollBar().value() + 1
+        tooltip = self.code_editor.line_number_area_linting_tooltips.get(hovering_on, '')
+        self.setToolTip(tooltip)
+
+        self.current_code = None
+        self.current_message = None
+
+        if not tooltip:
+            return
+
+        m = re.search(r"(C|R|W|E|F)\d{4}", tooltip)
+        if m is None:
+            return
+
+        # If any error, then consider putting in a try-catch, setting both to None again.
+        self.current_code = m.group(0)
+        self.current_message = tooltip.split(self.current_code)[0][:-1].strip()
+
+    def mousePressEvent(self, a0: QMouseEvent):
+        if self.current_code is None:
+            return
+
+        # if we're here, then we should ask the linter helper for
+        print(self.current_message, self.current_code)
+
+        application = self.code_editor.application
+        linting_worker = application.linting_worker
+
+        linting_helper = LintingHelper(application, linting_worker, self.current_message, self.current_code)
+        linting_helper.exec()
 
 
 class QCodeEditor(QPlainTextEdit):

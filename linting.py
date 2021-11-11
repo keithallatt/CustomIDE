@@ -6,9 +6,11 @@ Use the pylint module to run on arbitrary code or files and get a list of warnin
 """
 import tempfile
 import time
+import os
 
+from json import loads, dumps
 from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QVBoxLayout, QLabel)
+from PyQt5.QtWidgets import QDialog, QPushButton, QVBoxLayout, QLabel
 from pylint import epylint as lint
 
 
@@ -20,6 +22,23 @@ class LintingWorker(QObject):
         self.application = parent
         self.linting_results = None
         self.linting_debug_messages = False
+
+        self.linting_exclusions = []
+        if os.path.exists("linting_exclusions.json"):
+            self.linting_exclusions = loads(open("linting_exclusions.json", 'r').read()).get('linting_exclusions', [])
+
+    def save_exclusions(self):
+        with open("linting_exclusions.json", 'w') as f:
+            json_exclusions = dumps({"linting_exclusions": self.linting_exclusions}, indent=2)
+            f.write(json_exclusions)
+
+    def add_exclusion(self, exclusion_code: str):
+        if exclusion_code not in self.linting_exclusions:
+            self.linting_exclusions.append(exclusion_code)
+
+    def remove_exclusion(self, exclusion_code: str):
+        if exclusion_code in self.linting_exclusions:
+            self.linting_exclusions.remove(exclusion_code)
 
     def run_linter_on_code(self, code: str = None, filename: str = None):
         """
@@ -53,6 +72,11 @@ class LintingWorker(QObject):
             error_code_type = error[:error.index(")") + 1]
             message = error[len(error_code_type) + 1:]
 
+            linting_code = error_code_type.replace("(", "").split(", ")[0]
+
+            if linting_code in self.linting_exclusions:
+                continue
+
             all_results.append({
                 'filename': parts_of_line[0],
                 'line_number': int(parts_of_line[1].strip()),
@@ -65,7 +89,8 @@ class LintingWorker(QObject):
         try:
             self.finished.emit()
         except RuntimeError as e:
-            print("Runtime error", str(e))
+            if self.linting_debug_messages:
+                print("Runtime error", str(e))
 
     def run(self):
         while True:
@@ -95,29 +120,44 @@ class LintingWorker(QObject):
             try:
                 self.run_linter_on_code(code=self.application.code_window.toPlainText())
             except RuntimeError:
-                print("Runtime error")
+                if self.linting_debug_messages:
+                    print("Runtime error")
                 break  # maybe don't use break, but if code editor was deleted, then we should be done
 
 
-class LintDialog(QDialog):
-    def __init__(self, parent, lint_results, filename):
+class LintingHelper(QDialog):
+    """ Reference for certain codes and auto-fixing them with one click, or adding them to the exclusion list """
+    def __init__(self, parent=None, linting_worker: LintingWorker = None, linting_message=None, linting_code=None):
         super().__init__(parent)
 
-        self.setWindowTitle(f"Linting results on {filename}")
+        assert linting_worker is not None
+        assert linting_message is not None
+        assert linting_code is not None
 
-        q_btn = QDialogButtonBox.Ok
+        self.linting_worker = linting_worker
 
-        self.buttonBox = QDialogButtonBox(q_btn)
-        self.buttonBox.accepted.connect(self.accept)
-
-        if lint_results:
-            current_lint_format = "\n".join([f"Line {lint_line['line_number']}: {lint_line['message']}"
-                                             for lint_line in lint_results])
-        else:
-            current_lint_format = "No Issues."
+        self.setWindowTitle("PyLint Helper")
 
         self.layout = QVBoxLayout()
-        message = QLabel(current_lint_format)
+        message = QLabel("Lint Result: " + linting_message)
+
+        def ignore_lint_result_action():
+            self.linting_worker.add_exclusion(linting_code)
+            self.linting_worker.save_exclusions()
+            self.accept()
+
+        ignore_lint_result = QPushButton("Ignore this type of warning", self)
+        ignore_lint_result.clicked.connect(ignore_lint_result_action)
+
+        def exit_dialog_action():
+            self.reject()
+
+        exit_dialog = QPushButton("Close", self)
+        exit_dialog.clicked.connect(exit_dialog_action)
+
         self.layout.addWidget(message)
-        self.layout.addWidget(self.buttonBox)
+        self.layout.addWidget(ignore_lint_result)
+        self.layout.addWidget(exit_dialog)
         self.setLayout(self.layout)
+
+        self.response = None

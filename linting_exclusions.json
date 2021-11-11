@@ -1,0 +1,5 @@
+{
+  "linting_exclusions": [
+    "C0103"
+  ]
+}
