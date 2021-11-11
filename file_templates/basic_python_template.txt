@@ -1,0 +1,12 @@
+"""
+Basic Python Template
+"""
+
+def foo(n: int) -> int:
+    """ Prints the sum of the first n natural numbers. """
+    return (n + 1) * n // 2
+
+
+if __name__ == "__main__":
+    # print 300 * 301 / 2, or the sum from 1 to 300.
+    print(foo(300))
