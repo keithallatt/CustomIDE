@@ -273,9 +273,6 @@ class QLineNumberArea(QWidget):
         if self.current_code is None:
             return
 
-        # if we're here, then we should ask the linter helper for
-        print(self.current_message, self.current_code)
-
         application = self.code_editor.application
         linting_worker = application.linting_worker
 

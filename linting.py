@@ -27,6 +27,12 @@ class LintingWorker(QObject):
         if os.path.exists("linting_exclusions.json"):
             self.linting_exclusions = loads(open("linting_exclusions.json", 'r').read()).get('linting_exclusions', [])
 
+    def reset_exclusions(self):
+        self.linting_exclusions = []
+        with open("linting_exclusions.json", 'w') as f:
+            json_exclusions = dumps({"linting_exclusions": []}, indent=2)
+            f.write(json_exclusions)
+
     def save_exclusions(self):
         with open("linting_exclusions.json", 'w') as f:
             json_exclusions = dumps({"linting_exclusions": self.linting_exclusions}, indent=2)

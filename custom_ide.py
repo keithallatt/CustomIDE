@@ -484,9 +484,14 @@ class CustomIDE(QMainWindow):
 
         run_menu.addAction(run_action)
 
+
+        # TOOLS MENU
+
+        tools_menu = self.menu_bar.addMenu("&Tools")
+
         # PIP MENU
 
-        pip_menu = self.menu_bar.addMenu("&Pip")
+        pip_menu = tools_menu.addMenu("&Pip")
 
         installed_packages_action = QAction("Installed Packages List", self)
         installed_packages_action.triggered.connect(lambda: self.pip_function("list"))
@@ -501,6 +506,20 @@ class CustomIDE(QMainWindow):
             installed_packages_action,
             install_pip_action,
             pip_help_action
+        ])
+
+        # LINTING MENU
+
+        lint_menu = tools_menu.addMenu("PyLint")
+
+        def reset_linting_exclusions():
+            self.linting_worker.reset_exclusions()
+
+        reset_exclusions_action = QAction("Reset Linting Exclusions", self)
+        reset_exclusions_action.triggered.connect(reset_linting_exclusions)
+
+        lint_menu.addActions([
+            reset_exclusions_action
         ])
 
         # HELP MENU
