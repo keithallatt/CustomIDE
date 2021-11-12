@@ -2,13 +2,12 @@
 Make an editor for themes.
 """
 import os
-import sys
 from json import loads, dumps
+from typing import Union
 
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (QWidget, QMainWindow, QPushButton, QComboBox, QVBoxLayout, QHBoxLayout,
-                             QLabel, QColorDialog, QLineEdit, QSpinBox, QInputDialog, QDialog, QDialogButtonBox,
-                             QApplication)
+                             QLabel, QColorDialog, QLineEdit, QSpinBox, QInputDialog)
 
 DEFAULT_SYNTAX_HIGHLIGHTER = {
     "keyword": ["#2f8eab"],
@@ -38,16 +37,17 @@ DEFAULT_IDE_THEME = {
 
 
 class ThemeEditor(QMainWindow):
-    def __init__(self, parent=None):
+    """
+    Menu for theme editing, whether that involves editing the colors or making new themes.
+    """
+    def __init__(self, parent: QMainWindow = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle("Theme Editor")
-        self.resize(600, 500)
+        self.resize(800, 500)
 
         self.application = parent
-
         central_widget = QWidget(self)
-
         layout = QVBoxLayout()
 
         self.theme_kind = QComboBox(central_widget)
@@ -60,7 +60,8 @@ class ThemeEditor(QMainWindow):
         ide_themes = os.listdir("ide_themes")
         syntax_highlighters = os.listdir("syntax_highlighters")
 
-        def theme_list_change(new_text):
+        def theme_list_change(new_text: str) -> None:
+            """ When the Theme QComboBox's value changes, reset the contents of the panel. """
             folder_name = self.theme_kind.currentText().replace(" ", "_").lower()
             filepath = os.sep.join([folder_name, new_text])
             if not os.path.isfile(filepath):
@@ -69,15 +70,17 @@ class ThemeEditor(QMainWindow):
             for widget_index in reversed(range(self.scroll_widget_layout.count())):
                 widget_to_remove = self.scroll_widget_layout.itemAt(widget_index).widget()
                 self.scroll_widget_layout.removeWidget(widget_to_remove)
-                widget_to_remove.setParent(None)
                 widget_to_remove.deleteLater()
 
             theme = loads(open(filepath, 'r').read())
 
             for k, v in theme.items():
+                # must be done in place, if a local variable is used, it will overwrite some behaviour
+                # of each options.
                 self.scroll_widget_layout.addWidget(ThemeOption(self.scroll_widget_inside, k, v))
 
-        def theme_kind_change(new_text):
+        def theme_kind_change(new_text: str) -> None:
+            """ When the Theme Kind QComboBox's value changes, change the Theme QComboBox's options """
             while self.theme_list.count():
                 self.theme_list.removeItem(0)
             if new_text == "IDE Themes":
@@ -97,6 +100,7 @@ class ThemeEditor(QMainWindow):
         self.theme_list.currentTextChanged.connect(theme_list_change)
         self.scroll_widget_inside.setLayout(self.scroll_widget_layout)
 
+        # buttons that appear at the bottom of the window.
         self.new_button = QPushButton("New...")
         self.new_button.clicked.connect(self.new_theme)
 
@@ -121,7 +125,8 @@ class ThemeEditor(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-    def new_theme(self):
+    def new_theme(self) -> None:
+        """ Create a new theme, with the default values. """
         kind = self.theme_kind.currentText()
         name, accept = QInputDialog.getText(self, f"New {kind} Name", "Theme Name:")
         kind = kind.replace(" ", "_").lower()
@@ -148,27 +153,15 @@ class ThemeEditor(QMainWindow):
         self.theme_list.addItem(name)
         self.theme_list.setCurrentText(name)
 
-    def set_theme(self):
+    def set_theme(self) -> None:
+        """ Set the theme, and apply it visually immediately """
         kind = self.theme_kind.currentText().replace(" ", "_").lower()
         theme = self.theme_list.currentText()
 
         self.application.set_theme(kind, theme)
 
-        # dial = QDialog(self)
-        # dial.setWindowTitle("")
-        #
-        # button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Close)
-        # button_box.accepted.connect(lambda: QApplication.exit(0))
-        # button_box.rejected.connect(dial.accept)
-        #
-        # layout = QVBoxLayout()
-        # message = QLabel("Changes will take effect on restart. Quit now?")
-        # layout.addWidget(message)
-        # layout.addWidget(button_box)
-        # dial.setLayout(layout)
-        # dial.exec()
-
-    def save_values(self):
+    def save_values(self) -> None:
+        """ Save the theme values to file """
         filename = self.theme_kind.currentText().replace(" ", "_").lower() + os.sep + self.theme_list.currentText()
 
         values = dict()
@@ -182,7 +175,8 @@ class ThemeEditor(QMainWindow):
 
 
 class ThemeOption(QWidget):
-    def __init__(self, parent, label_str, args):
+    """ Represents a single row of the theme editor, such as  """
+    def __init__(self, parent: QWidget, label_str: str, args: Union[str, list, int]):
         super().__init__(parent)
 
         default_color = None
@@ -190,20 +184,29 @@ class ThemeOption(QWidget):
         string_option = None
         int_option = None
 
-        if type(args) == str and args.startswith("#"):
-            default_color = args
-            option_type = "color"
-        elif type(args) == list and len(args) == 1 and args[0].startswith("#"):
-            default_color = args[0]
-            style_option = ''
-            option_type = "styled color"
-        elif type(args) == list and len(args) == 2:
-            default_color, style_option = args
-            option_type = "styled color"
-        elif type(args) == str:
-            string_option = args
-            option_type = "string"
+        # determine type of option purely from option arguments.
+        # done so no checking has to be done before creation.
+        if type(args) == str:
+            args: str
+            if args.startswith("#"):
+                default_color = args
+                option_type = "color"
+            else:
+                string_option = args
+                option_type = "string"
+        elif type(args) == list:
+            args: list
+            if len(args) == 1 and args[0].startswith("#"):
+                default_color = args[0]
+                style_option = ''
+                option_type = "styled color"
+            elif len(args) == 2:
+                default_color, style_option = args
+                option_type = "styled color"
+            else:
+                return
         elif type(args) == int:
+            args: int
             int_option = args
             option_type = "int"
         else:
@@ -213,10 +216,12 @@ class ThemeOption(QWidget):
         label = QLabel(label_str.replace("_", " ").capitalize())
         layout.addWidget(label)
 
+        # add editable blocks depending on options set.
         if default_color is not None:
             button = QPushButton(default_color)
 
-            def button_push(color_name=None):
+            def button_push(color_name: Union[str, bool] = None) -> None:
+                """ On button push, allow user to select a color """
                 if color_name is None or type(color_name) == bool:
                     color = QColorDialog.getColor()
                     color_name = color.name()
@@ -259,7 +264,8 @@ class ThemeOption(QWidget):
         self.label_name = label_str
         self.option_type = option_type
 
-    def get_value(self):
+    def get_value(self) -> dict:
+        """ Return the value of this theme option as a dictionary. """
         if self.option_type == "color":
             return {self.label_name: self.color_name}
         if self.option_type == "styled color":

@@ -584,8 +584,6 @@ class CustomIDE(QMainWindow):
         logging.info("Set up menu bar")
 
     def set_up_linting(self):
-        # self.timer.timeout.connect(self.perform_lint)
-        # self.timer.start(100)
         self.linting_thread = QThread()
         self.linting_worker = LintingWorker(self)
         self.linting_worker.moveToThread(self.linting_thread)
