@@ -551,6 +551,17 @@ class CustomIDE(QMainWindow):
             reset_exclusions_action
         ])
 
+        # PLUG-IN MENU (OR WILL BE)
+
+        plugin_menu = tools_menu.addMenu("Plugins")
+
+        cloc_action = QAction("Count Lines Of Code", self)
+        cloc_action.triggered.connect(self.perform_cloc)
+
+        plugin_menu.addActions([
+            cloc_action
+        ])
+
         # HELP MENU
 
         help_menu = self.menu_bar.addMenu("&Help")
