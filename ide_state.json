@@ -12,7 +12,7 @@
   "save_on_close_automatically": false,
   "selected_tab": 1,
   "save_on_run": false,
-  "file_box_hidden": true,
+  "file_box_hidden": false,
   "tool_bar_hidden": false,
   "tool_bar_position": "top",
   "search_completion": "popup",
@@ -22,5 +22,5 @@
     1440,
     773
   ],
-  "project_viewer_splitter_pos": 240
+  "project_viewer_splitter_pos": 218
 }

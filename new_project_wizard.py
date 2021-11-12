@@ -6,8 +6,10 @@ import os.path
 import subprocess
 from json import loads
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import (QWizard, QWizardPage, QComboBox, QVBoxLayout, QHBoxLayout,
-                             QWidget, QLabel, QLineEdit, QCheckBox)
+                             QWidget, QLabel, QLineEdit, QCheckBox, QDialog)
 
 import logging
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
@@ -183,3 +185,46 @@ class NewProjectPage(QWizardPage):
             logging.error(f"Exception of type {type(e)}.")
 
         custom_ide_object.statusBar().showMessage('Error making new project', 3000)
+
+
+class NewFileDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("New File")
+
+        assert hasattr(parent, 'current_project_root')
+
+        self.root_file_path = parent.current_project_root
+        self._accepted = False
+
+        layout = QVBoxLayout()
+        self.line_edit = QLineEdit(self)
+        self.line_edit.setMinimumWidth(250)
+        layout.addWidget(self.line_edit)
+        self.setLayout(layout)
+
+    def get_file_name(self):
+        self.exec()
+
+        filename = self.line_edit.text()
+        filename = os.sep.join(self.root_file_path + [filename])
+
+        if self._accepted:
+            return filename
+        else:
+            return None
+
+    def keyPressEvent(self, a0: QKeyEvent) -> None:
+        # do things like with enter and all
+
+        if a0.key() == Qt.Key_Enter or a0.key() == Qt.Key_Return:
+            self._accepted = True
+            self.accept()
+
+        if a0.key() == Qt.Key_Escape:
+            self._accepted = False
+            self.reject()
+
+        super().keyPressEvent(a0)
+
+

@@ -24,7 +24,7 @@ import syntax
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog, FindAndReplaceWidget)
 
-from new_project_wizard import NewProjectWizard
+from new_project_wizard import NewProjectWizard, NewFileDialog
 from linting import LintingWorker
 from webbrowser import open_new_tab as open_in_browser
 import datetime
@@ -806,14 +806,8 @@ class CustomIDE(QMainWindow):
 
     def new_file(self):
         # make new file:
-        options_ = QFileDialog.Options()
-        options_ |= QFileDialog.DontUseNativeDialog
-        options_ |= QFileDialog.ShowDirsOnly
-        dial = QFileDialog()
-        dial.setDirectory(self.current_project_root_str)
-        dial.setDefaultSuffix("*.py")
-
-        filename, _ = dial.getSaveFileName(self, "Save file", "", "Python Files (*.py)", options=options_)
+        new_file_dialog = NewFileDialog(self)
+        filename = new_file_dialog.get_file_name()
 
         if filename:
             filename: str
@@ -924,7 +918,8 @@ class CustomIDE(QMainWindow):
             fp = filepath[len(self.current_project_root_str):]
             fp = fp.lstrip(os.sep)
 
-            self.file_tabs.close_tab(self.file_tabs.indexOf(self.file_tabs.tabs[fp]))
+            if fp in self.file_tabs.tabs.keys():
+                self.file_tabs.close_tab(self.file_tabs.indexOf(self.file_tabs.tabs[fp]))
 
             send2trash(filepath)
             dial.accept()
