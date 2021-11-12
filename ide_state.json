@@ -17,10 +17,10 @@
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    3840,
-    1080,
-    1920,
-    1043
+    4003,
+    1169,
+    1440,
+    773
   ],
-  "project_viewer_splitter_pos": 347
+  "project_viewer_splitter_pos": 256
 }

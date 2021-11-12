@@ -102,6 +102,18 @@ class CustomIDE(QMainWindow):
         self.is_linting_currently = False
         self.set_up_linting()
 
+        # this is to auto-save the ide_state and such, essentially for
+        # running the 'before close' over and over so that
+        self.auto_save_timer = QTimer(self)
+
+        def auto_save_ide_state():
+            self.before_close()
+            # Potentially show message, but can be distracting.
+            # self.statusBar().showMessage("Saved IDE State", 1000)
+
+        self.auto_save_timer.timeout.connect(auto_save_ide_state)
+        self.auto_save_timer.start(15000)  # run every 15 seconds.
+
         self.statusBar().showMessage('Ready', 3000)
         # right at the end, grab focus to the code editor
         self.file_tabs.set_syntax_highlighter()
