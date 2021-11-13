@@ -10,7 +10,7 @@
   "ide_theme": "custom_blue.json",
   "syntax_highlighter": "pycharm_darcula.json",
   "save_on_close_automatically": false,
-  "selected_tab": 1,
+  "selected_tab": 0,
   "save_on_run": false,
   "file_box_hidden": false,
   "tool_bar_hidden": false,
@@ -22,5 +22,5 @@
     1440,
     773
   ],
-  "project_viewer_splitter_pos": 157
+  "project_viewer_splitter_pos": 155
 }

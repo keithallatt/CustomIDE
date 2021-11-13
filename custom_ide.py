@@ -895,6 +895,7 @@ class CustomIDE(QMainWindow):
         self.current_opened_files.add(filepath)
         self.file_tabs.open_tab(filename)
         self.code_window.setEnabled(True)
+        self.code_window.setFocus()
 
     def save_file(self):
         if not self.current_opened_files:
