@@ -518,6 +518,23 @@ class CustomIDE(QMainWindow):
 
         run_menu.addAction(run_action)
 
+        # NAVIGATE MENU
+
+        navigate_menu = self.menu_bar.addMenu("&Navigate")
+
+        focus_project_viewer_action = QAction("Go to Project Viewer", self)
+        focus_project_viewer_action.setShortcut(shortcuts.get("focus_project_viewer", "Alt+1"))
+        focus_project_viewer_action.triggered.connect(self.project_viewer.setFocus)
+
+        focus_code_window_action = QAction("Go to Code Window", self)
+        focus_code_window_action.setShortcut(shortcuts.get("focus_code_window", "Alt+2"))
+        focus_code_window_action.triggered.connect(self.code_window.setFocus)
+
+        navigate_menu.addActions([
+            focus_project_viewer_action,
+            focus_code_window_action
+        ])
+
         # TOOLS MENU
 
         tools_menu = self.menu_bar.addMenu("&Tools")
