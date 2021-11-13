@@ -54,7 +54,7 @@ class CustomIDE(QMainWindow):
         shortcuts = loads(open("shortcuts.json", 'r').read())
         self.setWindowTitle("CustomIDE")
 
-        x, y, w, h = self.ide_state.get('window_geometry', [100, 100, 1000, 1000])
+        x, y, w, h = self.ide_state.get('window_geometry', [100, 100, 1000, 800])
         self.resize(w, h)
         self.move(x, y)
 
@@ -79,7 +79,6 @@ class CustomIDE(QMainWindow):
         self.current_project_root_str = None
         self.set_up_project_viewer()
 
-        self.file_window_show_column_info = 1, 2
         self.grid_layout = None
 
         self.main_box = QWidget(self)
@@ -270,6 +269,16 @@ class CustomIDE(QMainWindow):
         self.splitter.addWidget(self.main_box)
 
         self.splitter.setSizes([splitter_handle_pos, window_width - splitter_handle_pos])
+
+        def splitter_moved(pos, index):
+            """ To prevent drift, when the splitter is moved, it'll save it's new position
+                to the ide state dictionary. This is because the splitter position is not
+                the exact value that setSizes wants for the first argument, but nothing
+                else has been working so far. """
+            assert index == 1
+            self.ide_state['project_viewer_splitter_pos'] = pos
+
+        self.splitter.splitterMoved.connect(splitter_moved)
 
         layout = QHBoxLayout()
         layout.addWidget(self.splitter)
@@ -764,8 +773,6 @@ class CustomIDE(QMainWindow):
 
         self.ide_state['window_geometry'] = get_geometry(self)
 
-        self.ide_state['project_viewer_splitter_pos'] = self.splitter.handle(1).pos().x()
-
         json_str = dumps(self.ide_state, indent=2)
         open("ide_state.json", 'w').write(json_str)
         logging.info("Saved save state to file")
@@ -839,6 +846,9 @@ class CustomIDE(QMainWindow):
     def new_(self):
         if self.project_viewer.hasFocus():
             self.new_file()
+        elif self.code_window.hasFocus():
+
+            pass
 
     # File functions
 
@@ -905,7 +915,9 @@ class CustomIDE(QMainWindow):
         try:
             file_path_to_save = self.current_project_root_str, self.file_tabs.current_file_selected
             file_path_to_save = os.sep.join(file_path_to_save)
-            open(file_path_to_save, 'w').write(self.code_window.toPlainText())
+            with open(file_path_to_save, 'w') as f:
+                text = self.code_window.toPlainText()
+                f.write(text)
             self.statusBar().showMessage(f"Saved file to \"{file_path_to_save}\"", 3000)
         except (OSError, FileNotFoundError, IsADirectoryError):
             self.statusBar().showMessage("Could not save file.", 5000)

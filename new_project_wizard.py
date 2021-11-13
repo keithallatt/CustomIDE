@@ -204,6 +204,8 @@ class NewFileDialog(QDialog):
         title_label = QLabel("New File", self)
         menu_background = parent.special_color_dict['lighter-bg-color']
         border_color = parent.special_color_dict['darker-bg-color']
+        title_label.setMinimumWidth(250)
+        title_label.setAlignment(Qt.AlignCenter)
 
         title_label.setStyleSheet("background-color: " + menu_background + "; padding: 2px;")
 

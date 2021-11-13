@@ -3,12 +3,13 @@
   "project_dir": "~/PycharmProjects/pythonProject",
   "current_opened_files": [
     "main.py",
-    "secondary.py"
+    "secondary.py",
+    "asdf.txt"
   ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "ide_theme": "custom_blue.json",
-  "syntax_highlighter": "pycharm_darcula.json",
+  "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
   "selected_tab": 0,
   "save_on_run": false,
@@ -17,10 +18,10 @@
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    4003,
-    1169,
+    4095,
+    1149,
     1440,
-    773
+    771
   ],
-  "project_viewer_splitter_pos": 153
+  "project_viewer_splitter_pos": 255
 }
