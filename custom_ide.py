@@ -61,6 +61,7 @@ class CustomIDE(QMainWindow):
         self.linting_results = []
         self.current_opened_files = set()
         self.completer_style_sheet = ""
+        self.special_color_dict = dict()
         self.set_style_sheet()
 
         self.file_tabs = QCodeFileTabs(self)
@@ -168,6 +169,12 @@ class CustomIDE(QMainWindow):
 
         self.completer_style_sheet = f"background-color: {d_bg_w_c};  color: {fwc}; border: 1px solid {l_bg_w_c};"
 
+        self.special_color_dict = {
+            "darker-bg-color": d_bg_w_c,
+            "lighter-bg-color": l_bg_w_c,
+            "bg-color": bwc
+        }
+
         logging.info("Set up style sheet")
 
     def set_up_file_editor(self):
@@ -206,6 +213,8 @@ class CustomIDE(QMainWindow):
         qfi = QFontInfo(q)
         logging.debug(f"Font match? {font_name} v.s. {qfi.family()}: {font_name == qfi.family()}")
         self.code_window.setFont(q if font_name == qfi.family() else backup_font)
+
+        self.code_window.verticalScrollBar().setSingleStep(1)
 
         logging.info("Set up file editor / code editor")
 
@@ -817,6 +826,9 @@ class CustomIDE(QMainWindow):
 
     def new_file(self):
         # make new file:
+
+
+
         new_file_dialog = NewFileDialog(self)
         filename = new_file_dialog.get_file_name()
 

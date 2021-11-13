@@ -12,6 +12,8 @@ from PyQt5.QtWidgets import (QWizard, QWizardPage, QComboBox, QVBoxLayout, QHBox
                              QWidget, QLabel, QLineEdit, QCheckBox, QDialog)
 
 import logging
+from typing import Tuple
+
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 
 MAIN_PY_DEFAULT = """# This is a sample Python script.
@@ -190,7 +192,7 @@ class NewProjectPage(QWizardPage):
 class NewFileDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("New File")
+        self.setWindowFlag(Qt.FramelessWindowHint)
 
         assert hasattr(parent, 'current_project_root')
 
@@ -198,9 +200,24 @@ class NewFileDialog(QDialog):
         self._accepted = False
 
         layout = QVBoxLayout()
+
+        title_label = QLabel("New File", self)
+        menu_background = parent.special_color_dict['lighter-bg-color']
+        border_color = parent.special_color_dict['darker-bg-color']
+
+        title_label.setStyleSheet("background-color: " + menu_background + "; padding: 2px;")
+
+        layout.addWidget(title_label)
+
         self.line_edit = QLineEdit(self)
         self.line_edit.setMinimumWidth(250)
+        self.line_edit.setStyleSheet("QLineEdit:focus { border: 0px solid black; }")
+
         layout.addWidget(self.line_edit)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.setStyleSheet("QDialog { border: 3px solid " + border_color + "; }")
         self.setLayout(layout)
 
     def get_file_name(self):
