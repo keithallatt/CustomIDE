@@ -261,7 +261,7 @@ class QLineNumberArea(QWidget):
         if not tooltip:
             return
 
-        m = re.search(r"(C|R|W|E|F)\d{4}", tooltip)
+        m = re.search(r"[CRWEF]\d{4}", tooltip)
         if m is None:
             return
 
@@ -558,7 +558,36 @@ class QCodeEditor(QPlainTextEdit):
             if tc.selectionStart() == tc.selectionEnd():
                 matching_str = need_to_match[event.key()]
 
+                # get line so far.
+                line = tc.block().text()[:tc.positionInBlock()]
+                # ensure we're inserting an open parenthesis and we're looking at a 'def' line
+                is_func_line = bool(re.match(r'\s*def ([a-z_A-Z][a-z_A-Z0-9]*)', line)) and matching_str[0] == "("
+
+                # if is_func_line, and indent is non-zero, then look up at lines
+                # before until finding one at less indent
+                # that isn't empty
+
+                is_class_func = False
+                if is_func_line:
+                    line_indent = len(line) - len(line.lstrip())
+
+                    block_number = tc.blockNumber()
+                    lines = self.toPlainText().split("\n")[:block_number]
+
+                    while lines:
+                        next_to_consider = lines.pop(-1)
+                        if not next_to_consider.strip():
+                            continue
+
+                        next_indent = len(next_to_consider) - len(next_to_consider.lstrip())
+                        if next_indent < line_indent:
+                            is_class_func = next_to_consider.lstrip().startswith("class ")
+                            break
+
                 tc.insertText(matching_str[0])
+                if is_class_func:
+                    tc.insertText("self")
+
                 pos = tc.position()
                 tc.insertText(matching_str[1])
                 tc.setPosition(pos)
@@ -797,6 +826,17 @@ class QCodeEditor(QPlainTextEdit):
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
             block_number += 1
+
+    # code insertion
+
+    def insert_code_block(self, block_type: str, block_name: str):
+        assert block_type in ["method", "class"]
+        block_prefix = "def" if block_type == "method" else "class"
+
+        block_signature = f"{block_prefix} {block_name}"
+
+        # insert text, and use key event to insert '(' for method, it will automatically put () for methods
+        # and '(self)' for class functions.
 
     # Auto complete part.
 
