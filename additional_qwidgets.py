@@ -21,7 +21,7 @@ import warnings
 
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtBoundSignal, QEvent, QStringListModel
 from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor, QStandardItemModel,
-                         QStandardItem, QFont, QCursor, QKeySequence)
+                         QStandardItem, QFont, QCursor, QKeySequence, QKeyEvent)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
                              QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea, QMenu,
                              QApplication, QGridLayout)
@@ -838,6 +838,33 @@ class QCodeEditor(QPlainTextEdit):
         # insert text, and use key event to insert '(' for method, it will automatically put () for methods
         # and '(self)' for class functions.
 
+        tc = self.textCursor()
+
+        if tc.blockNumber() + 1 == self.blockCount():
+            tc.setPosition(len(self.toPlainText()))
+        else:
+            tc.movePosition(QTextCursor.Down)
+            tc.setPosition(tc.position() - tc.positionInBlock() - 1)
+
+        self.setTextCursor(tc)
+        self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier, '\n'))
+
+        # now that we're on a new line, insert the block signature
+
+        # refresh tc (just in case)
+        tc = self.textCursor()
+        tc.insertText(block_signature)
+
+        if block_prefix == 'def':  # no '(' for classes.
+            self.setTextCursor(tc)
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_ParenLeft, Qt.NoModifier, '('))
+            # refresh tc again
+            tc = self.textCursor()
+
+        tc.movePosition(QTextCursor.Right)
+        tc.insertText(":")
+
+
     # Auto complete part.
 
     def set_completer(self, c):
@@ -853,7 +880,7 @@ class QCodeEditor(QPlainTextEdit):
 
         tc = self.textCursor()
         extra = len(completion) - len(self._completer.completionPrefix())
-        tc.movePosition(QTextCursor.Left)
+        tc.movePosition(QTextCursor.Left)  # ?
         tc.movePosition(QTextCursor.EndOfWord)
 
         if completion in self.auto_complete_dict.keys():
