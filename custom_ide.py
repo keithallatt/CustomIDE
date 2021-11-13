@@ -74,7 +74,7 @@ class CustomIDE(QMainWindow):
 
         self.file_box = QWidget()
         self.model = QFileSystemModel()
-        self.tree = ProjectViewer(self)
+        self.project_viewer = ProjectViewer(self)
         self.current_project_root = None
         self.current_project_root_str = None
         self.set_up_project_viewer()
@@ -220,36 +220,36 @@ class CustomIDE(QMainWindow):
 
     def set_up_project_viewer(self):
         self.model.setRootPath('')
-        self.tree.doubleClicked.connect(self.open_file)
+        self.project_viewer.doubleClicked.connect(self.open_file)
 
         # Set the model of the view.
-        self.tree.setModel(self.model)
-        for i in range(1, self.tree.model().columnCount()):
-            self.tree.header().hideSection(i)
+        self.project_viewer.setModel(self.model)
+        for i in range(1, self.project_viewer.model().columnCount()):
+            self.project_viewer.header().hideSection(i)
 
         # Set the root index of the view as the user's home directory.
         proj_dir = self.ide_state['project_dir']
-        self.tree.setEnabled(False)
+        self.project_viewer.setEnabled(False)
         if proj_dir is not None:
             proj_dir = os.path.expanduser(proj_dir)
             if not os.path.exists(proj_dir):
                 return
 
-            self.tree.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
+            self.project_viewer.setRootIndex(self.model.index(QDir.cleanPath(proj_dir)))
             self.current_project_root = proj_dir.split(os.sep)
             self.current_project_root_str = proj_dir
-            self.tree.setEnabled(True)
+            self.project_viewer.setEnabled(True)
 
-        self.tree.setAnimated(False)
-        self.tree.setIndentation(20)
-        self.tree.setSortingEnabled(True)
-        self.tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self.project_viewer.setAnimated(False)
+        self.project_viewer.setIndentation(20)
+        self.project_viewer.setSortingEnabled(True)
+        self.project_viewer.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
         logging.info("Set up project viewer")
 
     def set_up_layout(self):
         file_box_layout = QGridLayout()
-        file_box_layout.addWidget(self.tree, 0, 0, 1, 1)
+        file_box_layout.addWidget(self.project_viewer, 0, 0, 1, 1)
         file_box_layout.setColumnStretch(0, 1)
         file_box_layout.setRowStretch(0, 1)
         self.file_box.setLayout(file_box_layout)
@@ -347,13 +347,9 @@ class CustomIDE(QMainWindow):
         file_menu = self.menu_bar.addMenu('&File')
 
         # set Ctrl-N to be the new file shortcut.
-        new_file_action = QAction("New File", self)
+        new_file_action = QAction("New...", self)
         new_file_action.setShortcut(shortcuts.get("new", "Ctrl+N"))
-        new_file_action.triggered.connect(self.new_file)
-
-        new_from_template_action = QAction("New From Template", self)
-        new_from_template_action.setShortcut(shortcuts.get("new_from_template", "Ctrl+Shift+N"))
-        new_from_template_action.triggered.connect(self.new_from_template)
+        new_file_action.triggered.connect(self.new_)
 
         # set Ctrl-W to be the close shortcut.
         close_file_action = QAction("Close", self)
@@ -390,7 +386,6 @@ class CustomIDE(QMainWindow):
 
         file_menu.addActions([
             new_file_action,
-            new_from_template_action,
             close_file_action,
             save_file_action,
         ])
@@ -618,9 +613,9 @@ class CustomIDE(QMainWindow):
         return self.code_window.getPlainText()
 
     def focus_file_explorer(self):
-        self.tree.setFocus()
-        i = self.tree.selectionModel().currentIndex()
-        self.tree.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
+        self.project_viewer.setFocus()
+        i = self.project_viewer.selectionModel().currentIndex()
+        self.project_viewer.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def perform_lint(self):
         def worker_finished():
@@ -759,7 +754,7 @@ class CustomIDE(QMainWindow):
         logging.info("Saved save state to file")
 
     def get_file_from_viewer(self):
-        q_model_indices = self.tree.selectedIndexes()
+        q_model_indices = self.project_viewer.selectedIndexes()
         assert len(q_model_indices) <= 1, "Multiple selected."
         last_index = q_model_indices[-1]
         file_paths = []
@@ -822,13 +817,16 @@ class CustomIDE(QMainWindow):
         window = ThemeEditor(self)
         window.show()
 
+    # Proxy functions for functions with the same shortcut
+
+    def new_(self):
+        if self.project_viewer.hasFocus():
+            self.new_file()
+
     # File functions
 
     def new_file(self):
         # make new file:
-
-
-
         new_file_dialog = NewFileDialog(self)
         filename = new_file_dialog.get_file_name()
 
@@ -846,15 +844,6 @@ class CustomIDE(QMainWindow):
             self.search_bar.set_data()
         else:
             return
-
-    def new_from_template(self):
-        # choose template
-
-        # create new file
-
-        # copy text from
-
-        pass
 
     def open_file(self, filepath: str = None):
         # if used for shortcut
@@ -1004,7 +993,7 @@ class CustomIDE(QMainWindow):
             self.file_tabs.reset_tabs()
             self.search_bar.set_data()
 
-            self.tree.setEnabled(True)
+            self.project_viewer.setEnabled(True)
 
     def close_project(self):
         if self.current_project_root is None:
@@ -1019,9 +1008,9 @@ class CustomIDE(QMainWindow):
         self.ide_state['project_dir'] = None
 
         self.model.setRootPath('')
-        self.tree.setRootIndex(self.model.index(QDir.cleanPath(os.sep)))
+        self.project_viewer.setRootIndex(self.model.index(QDir.cleanPath(os.sep)))
 
-        self.tree.setEnabled(False)
+        self.project_viewer.setEnabled(False)
 
     # Run functions
 

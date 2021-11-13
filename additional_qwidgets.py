@@ -1111,7 +1111,7 @@ class SearchBar(QLineEdit):
         if self.application.current_project_root is None:
             return
 
-        files = self.application.tree.get_files_as_strings()
+        files = self.application.project_viewer.get_files_as_strings()
 
         while self.autocomplete_model.rowCount() > 0:
             self.autocomplete_model.takeRow(0)
