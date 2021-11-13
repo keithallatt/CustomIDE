@@ -6,10 +6,10 @@ import os.path
 import subprocess
 from json import loads
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import (QWizard, QWizardPage, QComboBox, QVBoxLayout, QHBoxLayout,
-                             QWidget, QLabel, QLineEdit, QCheckBox, QDialog)
+                             QWidget, QLabel, QLineEdit, QCheckBox, QDialog, QListWidget, QAbstractItemView)
 
 import logging
 from typing import Tuple
@@ -189,19 +189,20 @@ class NewProjectPage(QWizardPage):
         custom_ide_object.statusBar().showMessage('Error making new project', 3000)
 
 
-class NewFileDialog(QDialog):
-    def __init__(self, parent=None):
+class GetNewNameDialog(QDialog):
+    def __init__(self, parent=None, dialog_title=None):
         super().__init__(parent)
         self.setWindowFlag(Qt.FramelessWindowHint)
 
         assert hasattr(parent, 'current_project_root')
+        assert dialog_title is not None
 
         self.root_file_path = parent.current_project_root
         self._accepted = False
 
         layout = QVBoxLayout()
 
-        title_label = QLabel("New File", self)
+        title_label = QLabel(dialog_title, self)
         menu_background = parent.special_color_dict['lighter-bg-color']
         border_color = parent.special_color_dict['darker-bg-color']
         title_label.setMinimumWidth(250)
@@ -224,14 +225,15 @@ class NewFileDialog(QDialog):
 
     def get_file_name(self):
         self.exec()
-
         filename = self.line_edit.text()
         filename = os.sep.join(self.root_file_path + [filename])
-
         if self._accepted:
             return filename
-        else:
-            return None
+
+    def get_raw_text(self):
+        self.exec()
+        if self._accepted:
+            return self.line_edit.text()
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         # do things like with enter and all
@@ -247,3 +249,72 @@ class NewFileDialog(QDialog):
         super().keyPressEvent(a0)
 
 
+class GetOptionDialog(QDialog):
+    def __init__(self, parent=None, dialog_title=None, options=None):
+        super().__init__(parent)
+        self.setWindowFlag(Qt.FramelessWindowHint)
+
+        assert hasattr(parent, 'current_project_root')
+        assert dialog_title is not None
+        assert options is not None
+
+        self.root_file_path = parent.current_project_root
+        self._accepted = False
+
+        layout = QVBoxLayout()
+
+        title_label = QLabel(dialog_title, self)
+        menu_background = parent.special_color_dict['lighter-bg-color']
+        border_color = parent.special_color_dict['darker-bg-color']
+        title_label.setMinimumWidth(250)
+        title_label.setAlignment(Qt.AlignCenter)
+
+        title_label.setStyleSheet("background-color: " + menu_background + "; padding: 2px;")
+
+        layout.addWidget(title_label)
+
+        self.list_widget = QListWidget(self)
+        self.list_widget.setMinimumWidth(250)
+        self.list_widget.addItems(options)
+
+        title_height = title_label.height()
+
+        item_height = self.list_widget.rectForIndex(self.list_widget.indexFromItem(self.list_widget.item(0))).height()
+        self.list_widget.setMaximumHeight(len(options) * item_height + 4)
+        self.setMaximumHeight(title_height + len(options) * item_height)
+
+        self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list_widget.viewport().installEventFilter(self)
+        self.list_widget.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+
+        layout.addWidget(self.list_widget)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.setStyleSheet("QDialog { border: 3px solid " + border_color + "; }")
+        self.setLayout(layout)
+
+    def eventFilter(self, source, event):
+        if event.type() == QEvent.Wheel and source is self.list_widget.viewport():
+            return True
+        return super().eventFilter(source, event)
+
+    def get_raw_text(self):
+        self.exec()
+        if self._accepted:
+            index = self.list_widget.currentIndex().row()
+            text = self.list_widget.item(index).text()
+            return text
+
+    def keyPressEvent(self, a0: QKeyEvent) -> None:
+        # do things like with enter and all
+        if a0.key() == Qt.Key_Enter or a0.key() == Qt.Key_Return:
+            self._accepted = True
+            self.accept()
+
+        if a0.key() == Qt.Key_Escape:
+            self._accepted = False
+            self.reject()
+
+        super().keyPressEvent(a0)

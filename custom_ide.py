@@ -24,7 +24,7 @@ import syntax
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog, FindAndReplaceWidget)
 
-from new_project_wizard import NewProjectWizard, NewFileDialog
+from new_project_wizard import NewProjectWizard, GetNewNameDialog, GetOptionDialog
 from linting import LintingWorker
 from webbrowser import open_new_tab as open_in_browser
 import datetime
@@ -777,6 +777,21 @@ class CustomIDE(QMainWindow):
         open("ide_state.json", 'w').write(json_str)
         logging.info("Saved save state to file")
 
+    def insert_code_block(self):
+        # for now, not in a new method.
+        dial = GetOptionDialog(self, "New...", ["Method...", "Class..."])
+        option = dial.get_raw_text()
+
+        if option:
+            block_name = GetNewNameDialog(self, option.replace(".", '') + " name").get_raw_text()
+        else:
+            return
+
+        if option == "Method...":
+            self.code_window.insert_code_block("method", block_name)
+        elif option == "Class...":
+            self.code_window.insert_code_block("class", block_name)
+
     def get_file_from_viewer(self):
         q_model_indices = self.project_viewer.selectedIndexes()
         assert len(q_model_indices) <= 1, "Multiple selected."
@@ -847,14 +862,13 @@ class CustomIDE(QMainWindow):
         if self.project_viewer.hasFocus():
             self.new_file()
         elif self.code_window.hasFocus():
-
-            pass
+            self.insert_code_block()
 
     # File functions
 
     def new_file(self):
         # make new file:
-        new_file_dialog = NewFileDialog(self)
+        new_file_dialog = GetNewNameDialog(self, "New File")
         filename = new_file_dialog.get_file_name()
 
         if filename:
