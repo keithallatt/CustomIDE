@@ -379,266 +379,275 @@ class CustomIDE(QMainWindow):
 
     def set_up_menu_bar(self, shortcuts):
         """ Set up the menu bar with all the options. """
-        # FILE MENU
-        file_menu = self.menu_bar.addMenu('&File')
+        def set_up_file_menu():
+            # FILE MENU
+            file_menu = self.menu_bar.addMenu('&File')
 
-        # set Ctrl-N to be the new file shortcut.
-        new_file_action = QAction("New...", self)
-        new_file_action.setShortcut(shortcuts.get("new", "Ctrl+N"))
-        new_file_action.triggered.connect(self.new_)
+            # set Ctrl-N to be the new file shortcut.
+            new_file_action = QAction("New...", self)
+            new_file_action.setShortcut(shortcuts.get("new", "Ctrl+N"))
+            new_file_action.triggered.connect(self.new_)
 
-        # set Ctrl-W to be the close shortcut.
-        close_file_action = QAction("Close", self)
-        close_file_action.setShortcut(shortcuts.get("close", "Ctrl+W"))
-        close_file_action.triggered.connect(self.close_file)
+            # set Ctrl-W to be the close shortcut.
+            close_file_action = QAction("Close", self)
+            close_file_action.setShortcut(shortcuts.get("close", "Ctrl+W"))
+            close_file_action.triggered.connect(self.close_file)
 
-        # set Ctrl-S to be the save shortcut.
-        save_file_action = QAction("Save", self)
-        save_file_action.setShortcut(shortcuts.get("save", "Ctrl+S"))
-        save_file_action.triggered.connect(self.save_file)
+            # set Ctrl-S to be the save shortcut.
+            save_file_action = QAction("Save", self)
+            save_file_action.setShortcut(shortcuts.get("save", "Ctrl+S"))
+            save_file_action.triggered.connect(self.save_file)
 
-        new_project_action = QAction("New Project", self)
-        new_project_action.setShortcut(shortcuts.get("new_project", ""))
-        new_project_action.triggered.connect(self.new_project)
+            new_project_action = QAction("New Project", self)
+            new_project_action.setShortcut(shortcuts.get("new_project", ""))
+            new_project_action.triggered.connect(self.new_project)
 
-        open_project_action = QAction("Open Project", self)
-        open_project_action.setShortcut(shortcuts.get("open_project", ""))
-        open_project_action.triggered.connect(self.open_project)
+            open_project_action = QAction("Open Project", self)
+            open_project_action.setShortcut(shortcuts.get("open_project", ""))
+            open_project_action.triggered.connect(self.open_project)
 
-        close_project_action = QAction("Close Project", self)
-        close_project_action.setShortcut(shortcuts.get("close_project", ""))
-        close_project_action.triggered.connect(self.close_project)
+            close_project_action = QAction("Close Project", self)
+            close_project_action.setShortcut(shortcuts.get("close_project", ""))
+            close_project_action.triggered.connect(self.close_project)
 
-        focus_search_bar_action = QAction("Search Files", self)
+            focus_search_bar_action = QAction("Search Files", self)
 
-        def focus_search_bar():
-            self.search_bar.setFocus()
+            def focus_search_bar():
+                self.search_bar.setFocus()
 
-        focus_search_bar_action.setShortcut(shortcuts.get("search_files", "Ctrl+Shift+L"))
-        focus_search_bar_action.triggered.connect(focus_search_bar)
+            focus_search_bar_action.setShortcut(shortcuts.get("search_files", "Ctrl+Shift+L"))
+            focus_search_bar_action.triggered.connect(focus_search_bar)
 
-        file_menu.addActions([
-            new_file_action,
-            close_file_action,
-            save_file_action,
-        ])
-        file_menu.addSeparator()
-        file_menu.addActions([
-            new_project_action,
-            open_project_action,
-            close_project_action
-        ])
-        file_menu.addSeparator()
-        file_menu.addActions([
-            focus_search_bar_action
-        ])
+            file_menu.addActions([
+                new_file_action,
+                close_file_action,
+                save_file_action,
+            ])
+            file_menu.addSeparator()
+            file_menu.addActions([
+                new_project_action,
+                open_project_action,
+                close_project_action
+            ])
+            file_menu.addSeparator()
+            file_menu.addActions([
+                focus_search_bar_action
+            ])
 
-        # EDIT MENU
+        def set_up_edit_menu():
+            # EDIT MENU
+            edit_menu = self.menu_bar.addMenu('&Edit')
 
-        edit_menu = self.menu_bar.addMenu('&Edit')
+            # maybe wrap cut and copy in decorator to select the current line if no text is selected
+            # should be in self.code_window, not here.
 
-        # maybe wrap cut and copy in decorator to select the current line if no text is selected
-        # should be in self.code_window, not here.
+            cut_action = QAction("Cut", self)
+            cut_action.setShortcut("Ctrl+X")
+            cut_action.triggered.connect(self.code_window.cut)
 
-        cut_action = QAction("Cut", self)
-        cut_action.setShortcut("Ctrl+X")
-        cut_action.triggered.connect(self.code_window.cut)
+            copy_action = QAction("Copy", self)
+            copy_action.setShortcut("Ctrl+C")
+            copy_action.triggered.connect(self.code_window.copy)
 
-        copy_action = QAction("Copy", self)
-        copy_action.setShortcut("Ctrl+C")
-        copy_action.triggered.connect(self.code_window.copy)
+            paste_action = QAction("Paste", self)
+            paste_action.setShortcut("Ctrl+V")
+            paste_action.triggered.connect(self.code_window.paste)
 
-        paste_action = QAction("Paste", self)
-        paste_action.setShortcut("Ctrl+V")
-        paste_action.triggered.connect(self.code_window.paste)
+            undo_action = QAction("Undo", self)
+            undo_action.setShortcut("Ctrl+Z")
+            undo_action.triggered.connect(self.code_window.undo)
 
-        undo_action = QAction("Undo", self)
-        undo_action.setShortcut("Ctrl+Z")
-        undo_action.triggered.connect(self.code_window.undo)
+            redo_action = QAction("Redo", self)
+            redo_action.setShortcut("Ctrl+Shift+Z")
+            redo_action.triggered.connect(self.code_window.redo)
 
-        redo_action = QAction("Redo", self)
-        redo_action.setShortcut("Ctrl+Shift+Z")
-        redo_action.triggered.connect(self.code_window.redo)
+            def find_action_connection():
+                self.code_window_find.show()
+                self.code_window_find.find_line.setFocus()
 
-        def find_action_connection():
-            self.code_window_find.show()
-            self.code_window_find.find_line.setFocus()
+            find_action = QAction("Find", self)
+            find_action.setShortcut("Ctrl+F")
+            find_action.triggered.connect(find_action_connection)
 
-        find_action = QAction("Find", self)
-        find_action.setShortcut("Ctrl+F")
-        find_action.triggered.connect(find_action_connection)
+            def replace_action_connection():
+                self.code_window_find.show()
+                self.code_window_find.replace_line.setFocus()
 
-        def replace_action_connection():
-            self.code_window_find.show()
-            self.code_window_find.replace_line.setFocus()
+            replace_action = QAction("Replace", self)
+            replace_action.setShortcut("Ctrl+R")
+            replace_action.triggered.connect(replace_action_connection)
 
-        replace_action = QAction("Replace", self)
-        replace_action.setShortcut("Ctrl+R")
-        replace_action.triggered.connect(replace_action_connection)
+            edit_menu.addActions([
+                cut_action,
+                copy_action,
+                paste_action,
+                undo_action,
+                redo_action
+            ])
+            edit_menu.addSeparator()
+            edit_menu.addActions([
+                find_action,
+                replace_action
+            ])
 
-        edit_menu.addActions([
-            cut_action,
-            copy_action,
-            paste_action,
-            undo_action,
-            redo_action
-        ])
-        edit_menu.addSeparator()
-        edit_menu.addActions([
-            find_action,
-            replace_action
-        ])
+        def set_up_view_menu():
+            # VIEW MENU
+            view_menu = self.menu_bar.addMenu('&View')
 
-        # VIEW MENU
+            show_tool_bar_action = QAction("Show Toolbar", self)
+            show_tool_bar_action.setShortcut(shortcuts.get("show_toolbar", "Ctrl+Alt+Shift+T"))
+            show_tool_bar_action.setCheckable(True)
 
-        view_menu = self.menu_bar.addMenu('&View')
+            def show_hide_toolbar():
+                if self.toolbar.isHidden():
+                    self.toolbar.show()
+                    show_tool_bar_action.setChecked(True)
+                else:
+                    self.toolbar.hide()
+                    show_tool_bar_action.setChecked(False)
 
-        show_tool_bar_action = QAction("Show Toolbar", self)
-        show_tool_bar_action.setShortcut(shortcuts.get("show_toolbar", "Ctrl+Alt+Shift+T"))
-        show_tool_bar_action.setCheckable(True)
+            show_tool_bar_action.triggered.connect(show_hide_toolbar)
 
-        def show_hide_toolbar():
-            if self.toolbar.isHidden():
-                self.toolbar.show()
+            if self.ide_state.get('tool_bar_hidden', False):
+                show_hide_toolbar()
+            else:
                 show_tool_bar_action.setChecked(True)
+
+            show_files_action = QAction("Show Files", self)
+            show_files_action.setShortcut(shortcuts.get("show_files", "Ctrl+Alt+Shift+F"))
+            show_files_action.setCheckable(True)
+
+            def show_hide_files_widget():
+                if self.file_box.isHidden():
+                    self.file_box.show()
+                    show_files_action.setChecked(True)
+                else:
+                    self.file_box.hide()
+                    show_files_action.setChecked(False)
+
+            show_files_action.triggered.connect(show_hide_files_widget)
+
+            if self.ide_state.get('file_box_hidden', False):
+                show_hide_files_widget()
             else:
-                self.toolbar.hide()
-                show_tool_bar_action.setChecked(False)
-
-        show_tool_bar_action.triggered.connect(show_hide_toolbar)
-
-        if self.ide_state.get('tool_bar_hidden', False):
-            show_hide_toolbar()
-        else:
-            show_tool_bar_action.setChecked(True)
-
-        show_files_action = QAction("Show Files", self)
-        show_files_action.setShortcut(shortcuts.get("show_files", "Ctrl+Alt+Shift+F"))
-        show_files_action.setCheckable(True)
-
-        def show_hide_files_widget():
-            if self.file_box.isHidden():
-                self.file_box.show()
                 show_files_action.setChecked(True)
-            else:
-                self.file_box.hide()
-                show_files_action.setChecked(False)
 
-        show_files_action.triggered.connect(show_hide_files_widget)
+            show_theme_editor_action = QAction("Show Theme Editor", self)
+            show_theme_editor_action.triggered.connect(self.show_theme_editor)
 
-        if self.ide_state.get('file_box_hidden', False):
-            show_hide_files_widget()
-        else:
-            show_files_action.setChecked(True)
+            view_menu.addActions([
+                show_tool_bar_action,
+                show_files_action,
+                show_theme_editor_action
+            ])
 
-        show_theme_editor_action = QAction("Show Theme Editor", self)
-        show_theme_editor_action.triggered.connect(self.show_theme_editor)
+        def set_up_run_menu():
+            # RUN MENU
 
-        view_menu.addActions([
-            show_tool_bar_action,
-            show_files_action,
-            show_theme_editor_action
-        ])
+            run_menu = self.menu_bar.addMenu('&Run')
 
-        # RUN MENU
+            # set Ctrl-R to be the run shortcut
+            run_action = QAction("Run", self)
+            run_action.setShortcut(shortcuts.get("run", "Ctrl+Shift+R"))
+            run_action.triggered.connect(self.run_function)
 
-        run_menu = self.menu_bar.addMenu('&Run')
+            run_menu.addAction(run_action)
 
-        # set Ctrl-R to be the run shortcut
-        run_action = QAction("Run", self)
-        run_action.setShortcut(shortcuts.get("run", "Ctrl+Shift+R"))
-        run_action.triggered.connect(self.run_function)
+        def set_up_navigate_menu():
+            # NAVIGATE MENU
 
-        run_menu.addAction(run_action)
+            navigate_menu = self.menu_bar.addMenu("&Navigate")
 
-        # NAVIGATE MENU
+            focus_project_viewer_action = QAction("Go to Project Viewer", self)
+            focus_project_viewer_action.setShortcut(shortcuts.get("focus_project_viewer", "Alt+1"))
+            focus_project_viewer_action.triggered.connect(self.project_viewer.setFocus)
 
-        navigate_menu = self.menu_bar.addMenu("&Navigate")
+            focus_code_window_action = QAction("Go to Code Window", self)
+            focus_code_window_action.setShortcut(shortcuts.get("focus_code_window", "Alt+2"))
+            focus_code_window_action.triggered.connect(self.code_window.setFocus)
 
-        focus_project_viewer_action = QAction("Go to Project Viewer", self)
-        focus_project_viewer_action.setShortcut(shortcuts.get("focus_project_viewer", "Alt+1"))
-        focus_project_viewer_action.triggered.connect(self.project_viewer.setFocus)
+            navigate_menu.addActions([
+                focus_project_viewer_action,
+                focus_code_window_action
+            ])
 
-        focus_code_window_action = QAction("Go to Code Window", self)
-        focus_code_window_action.setShortcut(shortcuts.get("focus_code_window", "Alt+2"))
-        focus_code_window_action.triggered.connect(self.code_window.setFocus)
+        def set_up_tools_menu():
+            # TOOLS MENU
 
-        navigate_menu.addActions([
-            focus_project_viewer_action,
-            focus_code_window_action
-        ])
+            tools_menu = self.menu_bar.addMenu("&Tools")
 
-        # TOOLS MENU
+            # PIP MENU
 
-        tools_menu = self.menu_bar.addMenu("&Tools")
+            pip_menu = tools_menu.addMenu("&Pip")
 
-        # PIP MENU
+            installed_packages_action = QAction("Installed Packages List", self)
+            installed_packages_action.triggered.connect(lambda: self.pip_function("list"))
 
-        pip_menu = tools_menu.addMenu("&Pip")
+            install_pip_action = QAction(f"Install Package...", self)
+            install_pip_action.triggered.connect(lambda: self.pip_function("install"))
 
-        installed_packages_action = QAction("Installed Packages List", self)
-        installed_packages_action.triggered.connect(lambda: self.pip_function("list"))
+            pip_help_action = QAction(f"Pip Help", self)
+            pip_help_action.triggered.connect(lambda: self.pip_function("help"))
 
-        install_pip_action = QAction(f"Install Package...", self)
-        install_pip_action.triggered.connect(lambda: self.pip_function("install"))
+            pip_menu.addActions([
+                installed_packages_action,
+                install_pip_action,
+                pip_help_action
+            ])
 
-        pip_help_action = QAction(f"Pip Help", self)
-        pip_help_action.triggered.connect(lambda: self.pip_function("help"))
+            # LINTING MENU
+            lint_menu = tools_menu.addMenu("PyLint")
 
-        pip_menu.addActions([
-            installed_packages_action,
-            install_pip_action,
-            pip_help_action
-        ])
+            def reset_linting_exclusions():
+                self.linting_worker.reset_exclusions()
 
-        # LINTING MENU
+            reset_exclusions_action = QAction("Reset Linting Exclusions", self)
+            reset_exclusions_action.triggered.connect(reset_linting_exclusions)
 
-        lint_menu = tools_menu.addMenu("PyLint")
+            lint_menu.addActions([
+                reset_exclusions_action
+            ])
 
-        def reset_linting_exclusions():
-            self.linting_worker.reset_exclusions()
+            # PLUG-IN MENU (OR WILL BE)
+            plugin_menu = tools_menu.addMenu("Plugins")
 
-        reset_exclusions_action = QAction("Reset Linting Exclusions", self)
-        reset_exclusions_action.triggered.connect(reset_linting_exclusions)
+            for plugin in self.plugin_objects:
+                plugin.make_menu_item(plugin_menu)
 
-        lint_menu.addActions([
-            reset_exclusions_action
-        ])
+        def set_up_help_menu():
+            # HELP MENU
 
-        # PLUG-IN MENU (OR WILL BE)
+            help_menu = self.menu_bar.addMenu("&Help")
 
-        plugin_menu = tools_menu.addMenu("Plugins")
+            github_repo_url = "https://github.com/keithallatt/CustomIDE"
+            # using web browser module's open_new_tab causes Gtk-Message and libGL errors, but still works (?)
 
-        for plugin in self.plugin_objects:
-            plugin.make_menu_item(plugin_menu)
+            def open_github_repo():
+                open_in_browser(github_repo_url)
 
-        # HELP MENU
+            def open_github_issues():
+                open_in_browser(github_repo_url + "/issues")
 
-        help_menu = self.menu_bar.addMenu("&Help")
+            github_repo_action = QAction("GitHub Repo", self)
+            github_repo_action.triggered.connect(open_github_repo)
 
-        github_repo_url = "https://github.com/keithallatt/CustomIDE"
-        # using web browser module's open_new_tab causes Gtk-Message and libGL errors, but still works (?)
+            github_issues_action = QAction("Report a problem", self)
+            github_issues_action.triggered.connect(open_github_issues)
 
-        def open_github_repo():
-            open_in_browser(github_repo_url)
+            help_menu.addActions([
+                github_repo_action,
+                github_issues_action
+            ])
 
-        def open_github_issues():
-            open_in_browser(github_repo_url + "/issues")
+        set_up_file_menu()
+        set_up_edit_menu()
+        set_up_view_menu()
+        set_up_run_menu()
+        set_up_navigate_menu()
+        set_up_tools_menu()
+        set_up_help_menu()
 
-        github_repo_action = QAction("GitHub Repo", self)
-        github_repo_action.triggered.connect(open_github_repo)
-
-        github_issues_action = QAction("Report a problem", self)
-        github_issues_action.triggered.connect(open_github_issues)
-
-        help_menu.addActions([
-            github_repo_action,
-            github_issues_action
-        ])
-
-        # SEARCH BAR
-        # set up search bar on right hand side.
-
+        # SEARCH BAR: set up search bar on right hand side.
         self.search_bar = SearchBar(self)
         self.menu_bar.setCornerWidget(self.search_bar, Qt.TopRightCorner)
 
