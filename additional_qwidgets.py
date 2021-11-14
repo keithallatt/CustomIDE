@@ -24,7 +24,7 @@ from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
                          QStandardItem, QFont, QCursor, QKeySequence, QKeyEvent)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
                              QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea, QMenu,
-                             QApplication, QGridLayout)
+                             QApplication, QGridLayout, QAction)
 
 import syntax
 from linting import LintingHelper
@@ -319,8 +319,9 @@ class QCodeEditor(QPlainTextEdit):
         self.all_autocomplete = []
         # Class Instances
         self.completion_prefix = ''
-
         self.string_locations = []
+
+        self.installEventFilter(self)
 
     def keyPressEvent(self, event):
         if self.text_input_mode == QCodeEditor.RawTextInput:
@@ -354,7 +355,7 @@ class QCodeEditor(QPlainTextEdit):
 
         if self._completer.popup().isVisible():
             if event.key() == Qt.Key_Q and event.modifiers() == Qt.ControlModifier:
-                # was weird sigsev at one point, if happens again, look into it.
+                # was weird sig sev at one point, if happens again, look into it.
                 QApplication.exit(0)
 
         eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="
@@ -827,7 +828,36 @@ class QCodeEditor(QPlainTextEdit):
             bottom = top + self.blockBoundingRect(block).height()
             block_number += 1
 
-    # code insertion
+    def eventFilter(self, q_object, event):
+        def select_line():
+            tc = self.textCursor()
+            if tc.selectionStart() == tc.selectionEnd():
+                tc.movePosition(QTextCursor.StartOfBlock)
+                tc.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+                self.setTextCursor(tc)
+
+        if event.type() == QEvent.KeyPress:
+            # modified copy, cut and duplicate
+            if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:
+                select_line()
+                self.copy()
+                return True
+            if event.key() == Qt.Key_X and event.modifiers() == Qt.ControlModifier:
+                select_line()
+                self.cut()
+                return True
+            if event.key() == Qt.Key_D and event.modifiers() == Qt.ControlModifier:
+                select_line()
+                tc = self.textCursor()
+                tc.beginEditBlock()
+                selected_text = tc.selectedText()
+                tc.setPosition(tc.selectionEnd())
+                tc.insertText("\n"+selected_text)
+                tc.endEditBlock()
+                self.setTextCursor(tc)
+                return True
+
+        return QWidget.eventFilter(self, q_object, event)
 
     def insert_code_block(self, block_type: str, block_name: str):
         assert block_type in ["method", "class"]
@@ -863,9 +893,6 @@ class QCodeEditor(QPlainTextEdit):
 
         tc.movePosition(QTextCursor.Right)
         tc.insertText(":")
-
-
-    # Auto complete part.
 
     def set_completer(self, c):
         self._completer = c

@@ -74,7 +74,7 @@ class CustomIDE(QMainWindow):
         self.set_style_sheet()
 
         self.file_tabs = QCodeFileTabs(self)
-        self.code_window = QCodeEditor(self)
+        self.code_window = None
         self.completer = None
         self.completer_model = None
         self.code_window_find = FindAndReplaceWidget(self)
@@ -397,19 +397,16 @@ class CustomIDE(QMainWindow):
         save_file_action.setShortcut(shortcuts.get("save", "Ctrl+S"))
         save_file_action.triggered.connect(self.save_file)
 
-        # set Ctrl-Shift-N to be the new project shortcut.
         new_project_action = QAction("New Project", self)
-        # new_project_action.setShortcut(shortcuts.get("new_project", "Ctrl+Shift+N"))
+        new_project_action.setShortcut(shortcuts.get("new_project", ""))
         new_project_action.triggered.connect(self.new_project)
 
-        # set Ctrl-Shift-O to be the open project shortcut.
         open_project_action = QAction("Open Project", self)
-        # open_project_action.setShortcut(shortcuts.get("open_project", "Ctrl+Shift+O"))
+        open_project_action.setShortcut(shortcuts.get("open_project", ""))
         open_project_action.triggered.connect(self.open_project)
 
-        # set Ctrl-Shift-W to be the close project shortcut.
         close_project_action = QAction("Close Project", self)
-        # close_project_action.setShortcut(shortcuts.get("close_project", "Ctrl+Shift+W"))
+        close_project_action.setShortcut(shortcuts.get("close_project", ""))
         close_project_action.triggered.connect(self.close_project)
 
         focus_search_bar_action = QAction("Search Files", self)
