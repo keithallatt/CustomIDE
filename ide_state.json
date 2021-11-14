@@ -1,23 +1,25 @@
 {
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/pythonProject",
-  "current_opened_files": [],
+  "current_opened_files": [
+    "main.py"
+  ],
   "editor_font_family": "PragmataPro",
   "editor_font_size": 14,
   "ide_theme": "custom_blue.json",
   "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": -1,
+  "selected_tab": 0,
   "save_on_run": false,
   "file_box_hidden": false,
   "tool_bar_hidden": false,
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    4041,
-    1187,
-    1440,
-    773
+    773,
+    289,
+    1920,
+    1016
   ],
   "project_viewer_splitter_pos": 255
 }

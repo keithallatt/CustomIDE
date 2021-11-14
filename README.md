@@ -5,6 +5,15 @@ but could potentially be modified to work on other operating systems / desktop e
 
 ---
 
+## IMPORTANT:
+
+There is a feature for plugins. Any plugins you choose to add, you do at your own risk. 
+These plugins are neither checked nor verified, and run with full access to your system.
+The goal with the plugins is for users to add their own, and potentially share if they want to.
+Make sure you understand what each plugin does and how it can potentially affect your system.
+
+---
+
 Currently, the IDE only has a dark mode (a programmer favourite), but also currently comes with 2 themes.
 
 ![current_ide](readme_assets/current_sample_main.png?)

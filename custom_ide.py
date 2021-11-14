@@ -7,6 +7,8 @@ Count lines with:
 -- NOTICE --
 This program is only designed to work on Ubuntu 20.04, as this is a personal project to create a functional IDE.
 """
+import importlib
+import inspect
 import os
 import re
 import subprocess
@@ -20,6 +22,7 @@ from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemMode
                              QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
                              QCompleter, QHBoxLayout, QSplitter, QSplashScreen)
 
+import plugins
 import syntax
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog, FindAndReplaceWidget)
@@ -93,7 +96,9 @@ class CustomIDE(QMainWindow):
 
         self.set_up_from_save_state()
 
-        # QMainWindow
+        self.plugin_objects = []
+        self.set_up_plugins()
+
         self.toolbar = None
         self.set_up_toolbar()
 
@@ -330,6 +335,21 @@ class CustomIDE(QMainWindow):
 
         logging.info("Restored save state")
 
+    def set_up_plugins(self):
+        plugin_modules = []
+
+        for f in os.listdir("./plugins_directory"):
+            if "plugin.py" in f:
+                module_name = f.replace(".py", "")
+                plugin_modules.append(f'plugins_directory.{module_name}')
+
+        for mod_name in plugin_modules:
+            globals()[mod_name] = importlib.import_module(mod_name)
+
+            for c_name, clazz in inspect.getmembers(globals()[mod_name], inspect.isclass):
+                if issubclass(clazz, plugins.Plugin):
+                    self.plugin_objects.append(clazz(self))
+
     def set_up_toolbar(self):
         self.toolbar = QToolBar("Custom IDE Toolbar", self)
 
@@ -341,13 +361,11 @@ class CustomIDE(QMainWindow):
         save_button.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
         save_button.clicked.connect(self.save_file)
 
-        cloc_button = QPushButton("CLOC")
-        cloc_button.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
-        cloc_button.clicked.connect(self.perform_cloc)
-
         self.toolbar.addWidget(run_button)
         self.toolbar.addWidget(save_button)
-        self.toolbar.addWidget(cloc_button)
+
+        for plugin in self.plugin_objects:
+            plugin.make_toolbar_item(self.toolbar)
 
         tool_bar_area = {
             "top": Qt.TopToolBarArea,
@@ -594,12 +612,8 @@ class CustomIDE(QMainWindow):
 
         plugin_menu = tools_menu.addMenu("Plugins")
 
-        cloc_action = QAction("Count Lines Of Code", self)
-        cloc_action.triggered.connect(self.perform_cloc)
-
-        plugin_menu.addActions([
-            cloc_action
-        ])
+        for plugin in self.plugin_objects:
+            plugin.make_menu_item(plugin_menu)
 
         # HELP MENU
 
@@ -665,29 +679,6 @@ class CustomIDE(QMainWindow):
         self.linting_thread.finished.connect(self.linting_thread.deleteLater)
 
         self.linting_thread.start()
-
-    def perform_cloc(self):
-        """ run 'cloc' on the project """
-        if self.current_project_root is None:
-            self.statusBar().showMessage("No project open", 3000)
-            return
-
-        folder = self.current_project_root_str
-        command = f"cloc {folder} --by-file --exclude-dir=venv,.idea".split(" ")
-        out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        stdout, stderr = out.communicate()
-
-        # fixing bytes output (weird stuff that doesn't show up
-        # when printing, but is still there nonetheless
-        stdout = stdout.replace(b'\r', b'.\n')
-        stdout = stdout.replace(b'classified', b'       Classified')
-
-        stdout = stdout.decode("utf-8")
-        dial = CommandLineCallDialog("cloc", "Line counting for " + self.current_project_root_str, self)
-        dial.set_content(stdout)
-        dial.exec()
-
-        logging.info("Performed `cloc` on project")
 
     def pip_function(self, function, *args):
         """ Execute a command line call in the form 'pip3 function arg1 arg2 ...' """
