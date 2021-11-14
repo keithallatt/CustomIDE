@@ -24,7 +24,7 @@ from PyQt5.QtGui import (QColor, QPainter, QTextFormat, QMouseEvent, QTextCursor
                          QStandardItem, QFont, QCursor, QKeySequence, QKeyEvent)
 from PyQt5.QtWidgets import (QWidget, QPlainTextEdit, QTextEdit, QPushButton, QStyle, QTabWidget, QTreeView, QDialog,
                              QDialogButtonBox, QVBoxLayout, QLabel, QLineEdit, QCompleter, QScrollArea, QMenu,
-                             QApplication, QGridLayout, QAction)
+                             QApplication, QGridLayout)
 
 import syntax
 from linting import LintingHelper
@@ -830,11 +830,11 @@ class QCodeEditor(QPlainTextEdit):
 
     def eventFilter(self, q_object, event):
         def select_line():
-            tc = self.textCursor()
-            if tc.selectionStart() == tc.selectionEnd():
-                tc.movePosition(QTextCursor.StartOfBlock)
-                tc.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
-                self.setTextCursor(tc)
+            text_cursor = self.textCursor()
+            if text_cursor.selectionStart() == text_cursor.selectionEnd():
+                text_cursor.movePosition(QTextCursor.StartOfBlock)
+                text_cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+                self.setTextCursor(text_cursor)
 
         if event.type() == QEvent.KeyPress:
             # modified copy, cut and duplicate
@@ -912,7 +912,38 @@ class QCodeEditor(QPlainTextEdit):
 
         if completion in self.auto_complete_dict.keys():
             tc.setPosition(tc.position() - len(self._completer.completionPrefix()), QTextCursor.KeepAnchor)
-            tc.insertText(self.auto_complete_dict[completion])
+
+            completer_result = self.auto_complete_dict[completion]
+
+            if type(completer_result) == str:
+                completer_text = completer_result
+                sel_start = -1
+                sel_end = -1
+            elif type(completer_result) == tuple or type(completer_result) == list:
+                if len(completer_result) == 2:  # 2 values
+                    completer_text = completer_result[0]
+                    sel_start = completer_result[1]
+                    sel_end = completer_result[1]
+                elif len(completer_result) == 3:  # 3 values
+                    completer_text = completer_result[0]
+                    sel_start = completer_result[1]
+                    sel_end = completer_result[2]
+                else:
+                    return
+            else:
+                return
+
+            def rel_to_abs_position(position):
+                return (position % (len(completer_text) + 1)) - len(completer_text) + tc.position()
+
+            tc.insertText(completer_text)
+
+            sel_start = rel_to_abs_position(sel_start)
+            sel_end = rel_to_abs_position(sel_end)
+
+            tc.setPosition(sel_start)
+            tc.setPosition(sel_end, QTextCursor.KeepAnchor)
+            self.setTextCursor(tc)
         elif self.completion_prefix.lower() != completion[-extra:].lower():
             tc.insertText(completion[-extra:])
             self.setTextCursor(tc)
