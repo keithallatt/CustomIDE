@@ -15,10 +15,10 @@ from colorsys import rgb_to_hsv, hsv_to_rgb
 from json import loads, dumps
 
 from PyQt5.QtCore import Qt, QDir, QModelIndex, QEvent, QItemSelectionModel, QStringListModel, QTimer, QThread
-from PyQt5.QtGui import QFont, QFontInfo
+from PyQt5.QtGui import QFont, QFontInfo, QPixmap
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemModel, QFileDialog, QMainWindow, QToolBar,
                              QAction, QPushButton, QStyle, QInputDialog, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,
-                             QCompleter, QHBoxLayout, QSplitter)
+                             QCompleter, QHBoxLayout, QSplitter, QSplashScreen)
 
 import syntax
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
@@ -48,6 +48,12 @@ class CustomIDE(QMainWindow):
     def __init__(self, parent=None):
         """ Create the widget """
         super().__init__(parent)
+
+        # start the splash screen
+
+        self.splash = QSplashScreen(QPixmap("./splash.jpeg"))
+        self.splash.show()
+
         self.ide_state = loads(open("ide_state.json", 'r').read())
         self.ide_theme = loads(open("ide_themes" + os.sep + self.ide_state['ide_theme'], 'r').read())
 
@@ -118,6 +124,9 @@ class CustomIDE(QMainWindow):
         # right at the end, grab focus to the code editor
         self.file_tabs.set_syntax_highlighter()
         self.code_window.setFocus()
+
+        self.splash.finish(self)
+        self.show()
 
     # Setup Functions
 
@@ -1181,7 +1190,6 @@ def main():
     try:
         app = QApplication(sys.argv)
         window = CustomIDE()
-        window.show()
         exit_code = app.exec_()
 
         window.before_close()
