@@ -2,7 +2,5 @@
   "background_window_color": "#222233",
   "foreground_window_color": "#ffffff",
   "line_number_color": "#9999cc",
-  "line_highlight_color": "#8888aa",
-  "editor_font_family": "PragmataPro",
-  "editor_font_size": 14
+  "line_highlight_color": "#8888aa"
 }
