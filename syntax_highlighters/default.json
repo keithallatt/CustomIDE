@@ -11,7 +11,7 @@
   "builtins": [
     "#8888c6"
   ],
-  "defclass": [
+  "def_class": [
     "#ffc66d"
   ],
   "string": [
@@ -31,7 +31,7 @@
   "numbers": [
     "#6897bb"
   ],
-  "dunder": [
+  "double_under": [
     "#b200b2"
   ],
   "kwargs": [

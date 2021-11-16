@@ -152,13 +152,13 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             (r'\bself\b', 0, STYLES['self']),
 
 
-            # dunder methods. place earlier so it gets overridden by other rules.
-            (r'__[a-zA-z](\w)*__', 0, STYLES['dunder']),
+            # double underscore methods. place earlier so it gets overridden by other rules.
+            (r'__[a-zA-z](\w)*__', 0, STYLES['double_under']),
 
             # 'def' followed by an identifier
-            (r'\bdef\b\s*(\w+)', 1, STYLES['defclass']),
+            (r'\bdef\b\s*(\w+)', 1, STYLES['def_class']),
             # 'class' followed by an identifier
-            (r'\bclass\b\s*(\w+)', 1, STYLES['defclass']),
+            (r'\bclass\b\s*(\w+)', 1, STYLES['def_class']),
 
             # Numeric literals
             (r'\b[+-]?[0-9]+[lL]?\b', 0, STYLES['numbers']),

@@ -28,4 +28,3 @@ class ClocPlugin(plugins.Plugin):
         dial = CommandLineCallDialog("cloc", "Line counting for " + self.parent.current_project_root_str, self.parent)
         dial.set_content(stdout)
         dial.exec()
-

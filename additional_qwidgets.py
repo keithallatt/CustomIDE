@@ -204,12 +204,12 @@ class FindAndReplaceWidget(QWidget):
 
                 dial.accept()
 
-            def dont_replace_and_reject():
+            def no_replace_and_reject():
                 self.find_button_pushed()
                 dial.reject()
 
             button_box.accepted.connect(lambda: replace_again_and_accept(all_before))
-            button_box.rejected.connect(dont_replace_and_reject)
+            button_box.rejected.connect(no_replace_and_reject)
 
             layout = QVBoxLayout()
             message = QLabel("Continue replacing from the beginning?")

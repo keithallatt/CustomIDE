@@ -12,7 +12,6 @@ from PyQt5.QtWidgets import (QWizard, QWizardPage, QComboBox, QVBoxLayout, QHBox
                              QWidget, QLabel, QLineEdit, QCheckBox, QDialog, QListWidget, QAbstractItemView)
 
 import logging
-from typing import Tuple
 
 logging.basicConfig(filename='debug_logger.log', level=logging.DEBUG)
 

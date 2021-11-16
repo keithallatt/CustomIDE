@@ -2,6 +2,7 @@
 """
 linting.py: Use the pylint module to run on arbitrary code or files and get a list of warnings etc.
 """
+import logging
 import tempfile
 import time
 import os
@@ -108,7 +109,10 @@ class LintingWorker(QObject):
         self.linting_results = all_results
         # emit a finishing signal
         try:
-            self.finished.emit()
+            if hasattr(self.finished, 'emit'):
+                self.finished.emit()
+            else:
+                logging.error("PyQt Signal Emit not performed (linting.py)")
         except RuntimeError as e:
             if self.linting_debug_messages:
                 print("Runtime error", str(e))

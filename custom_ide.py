@@ -191,7 +191,7 @@ class CustomIDE(QMainWindow):
 
         named_intervals.sort(key=lambda interval: interval[1], reverse=True)
         print("Time taken:")
-        print(*[ f"{n.ljust(15)}: {t / 1_000_000}ms" for n, t in named_intervals], sep="\n")
+        print(*[f"{n.ljust(15)}: {t / 1_000_000}ms" for n, t in named_intervals], sep="\n")
 
         self.splash.finish(self)
         self.show()
@@ -1259,7 +1259,7 @@ def main():
         sys.exit(exit_code)
     except Exception as e:
         logging.error("  ".join([
-            "Fatal error occured in running application:",
+            "Fatal error occurred in running application:",
             e.__str__()
         ]))
         raise e
