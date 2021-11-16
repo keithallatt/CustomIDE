@@ -1,0 +1,8 @@
+{
+  "background_window_color": "#222222",
+  "foreground_window_color": "#ffffff",
+  "line_number_color": "#999999",
+  "line_highlight_color": "#888888",
+  "editor_font_family": "Courier New",
+  "editor_font_size": 12
+}

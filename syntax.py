@@ -12,7 +12,7 @@ Also updated as the original looked like it did not handle things such as:
 - a few other small features
 """
 from PyQt5 import QtCore, QtGui
-from json import loads
+from json import loads, dumps
 from re import escape
 import builtins
 import inspect
@@ -46,10 +46,26 @@ def reset_styles(ide_state: dict = None):
     if ide_state is None:
         ide_state = loads(open("ide_state.json", 'r').read())
 
+    syntax_highlighter_filepath = f"syntax_highlighters{os.sep}{ide_state['syntax_highlighter']}"
+
+    if not os.path.exists(syntax_highlighter_filepath):
+        for file in os.listdir("./syntax_highlighters"):
+            ide_state['ide_theme'] = file
+            syntax_highlighter_filepath = f"ide_themes{os.sep}{file}"
+            break
+        else:
+            from theme_editor import DEFAULT_SYNTAX_HIGHLIGHTER
+            default_theme = dumps(DEFAULT_SYNTAX_HIGHLIGHTER, indent=2)
+            syntax_highlighter_filepath = f"syntax_highlighters{os.sep}default.json"
+            with open(syntax_highlighter_filepath, 'w') as f:
+                f.write(default_theme)
+            ide_state['ide_theme'] = "default.json"
+            STYLES = {k: format_color(*v) for k, v in DEFAULT_SYNTAX_HIGHLIGHTER.items()}
+            return
+
     STYLES = {
         k: format_color(*v) for k, v in loads(
-            open("syntax_highlighters" + os.sep +
-                 ide_state['syntax_highlighter'], 'r').read()
+            open(syntax_highlighter_filepath, 'r').read()
         ).items()
     }
 

@@ -10,27 +10,27 @@ from PyQt5.QtWidgets import (QWidget, QMainWindow, QPushButton, QComboBox, QVBox
                              QLabel, QColorDialog, QLineEdit, QSpinBox, QInputDialog)
 
 DEFAULT_SYNTAX_HIGHLIGHTER = {
-    "keyword": ["#2f8eab"],
+    "keyword": ["#cc7832"],
     "operator": ["#ffffff"],
     "brace": ["#ffffff"],
-    "builtins": ["#a2eae0"],
-    "defclass": ["#92d7ef"],
-    "string": ["#bcb8ce"],
-    "string2": ["#bcb8ce", "bold"],
+    "builtins": ["#8888c6"],
+    "defclass": ["#ffc66d"],
+    "string": ["#6a8759"],
+    "string2": ["#629755", "bold"],
     "comment": ["#808080", "italic"],
-    "self": ["#917898"],
-    "numbers": ["#a5cdef"],
-    "dunder": ["#a2eae0"],
-    "kwargs": ["#f9acbb"],
-    "todo": ["#4790ba", "italic"],
-    "todo_author": ["#44a0ff", "bold italic"]
+    "self": ["#94558d"],
+    "numbers": ["#6897bb"],
+    "dunder": ["#b200b2"],
+    "kwargs": ["#aa4926"],
+    "todo": ["#bbb529", "italic"],
+    "todo_author": ["#bbbb99", "bold italic"]
 }
 
 DEFAULT_IDE_THEME = {
-  "background_window_color": "#222233",
+  "background_window_color": "#222222",
   "foreground_window_color": "#ffffff",
-  "line_number_color": "#9999cc",
-  "line_highlight_color": "#8888aa",
+  "line_number_color": "#999999",
+  "line_highlight_color": "#888888",
   "editor_font_family": "Courier New",
   "editor_font_size": 12
 }

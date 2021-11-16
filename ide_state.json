@@ -2,22 +2,23 @@
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/levenshtein_edit",
   "current_opened_files": [
-    "main.py"
+    "main.py",
+    "liskov.py"
   ],
   "editor_font_family": "Ubuntu Mono",
   "editor_font_size": 14,
-  "ide_theme": "custom_teal.json",
-  "syntax_highlighter": "custom_blue.json",
+  "ide_theme": "default.json",
+  "syntax_highlighter": "default.json",
   "save_on_close_automatically": false,
-  "selected_tab": 0,
+  "selected_tab": 1,
   "save_on_run": false,
   "file_box_hidden": false,
   "tool_bar_hidden": false,
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    1766,
-    323,
+    4079,
+    1121,
     1440,
     773
   ],

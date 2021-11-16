@@ -23,6 +23,7 @@ from PyQt5.QtWidgets import (QApplication, QGridLayout, QWidget, QFileSystemMode
                              QCompleter, QHBoxLayout, QSplitter, QSplashScreen)
 
 import plugins
+import time
 import syntax
 from additional_qwidgets import (QCodeEditor, QCodeFileTabs, ProjectViewer, SaveFilesOnCloseDialog,
                                  SearchBar, CommandLineCallDialog, FindAndReplaceWidget)
@@ -52,13 +53,32 @@ class CustomIDE(QMainWindow):
         """ Create the widget """
         super().__init__(parent)
 
+        ts = [time.perf_counter_ns()]
+        names = []
         # start the splash screen
 
         self.splash = QSplashScreen(QPixmap("./splash.jpeg"))
         self.splash.show()
 
+        assert os.path.exists("ide_state.json"), "IDE State File Missing."
         self.ide_state = loads(open("ide_state.json", 'r').read())
-        self.ide_theme = loads(open("ide_themes" + os.sep + self.ide_state['ide_theme'], 'r').read())
+
+        ide_theme_filepath = f"ide_themes{os.sep}{self.ide_state['ide_theme']}"
+
+        if not os.path.exists(ide_theme_filepath):
+            for file in os.listdir("./ide_themes"):
+                self.ide_state['ide_theme'] = file
+                ide_theme_filepath = f"ide_themes{os.sep}{file}"
+                break
+            else:
+                from theme_editor import DEFAULT_IDE_THEME
+                default_theme = dumps(DEFAULT_IDE_THEME, indent=2)
+                ide_theme_filepath = f"ide_themes{os.sep}default.json"
+                with open(ide_theme_filepath, 'w') as f:
+                    f.write(default_theme)
+                self.ide_state['ide_theme'] = "default.json"
+
+        self.ide_theme = loads(open(ide_theme_filepath, 'r').read())
 
         shortcuts = loads(open("shortcuts.json", 'r').read())
         self.setWindowTitle("CustomIDE")
@@ -67,11 +87,17 @@ class CustomIDE(QMainWindow):
         self.resize(w, h)
         self.move(x, y)
 
+        names.append("ide state")
+        ts.append(time.perf_counter_ns())
+
         self.linting_results = []
         self.current_opened_files = set()
         self.completer_style_sheet = ""
         self.special_color_dict = dict()
         self.set_style_sheet()
+
+        names.append("style sheet")
+        ts.append(time.perf_counter_ns())
 
         self.file_tabs = QCodeFileTabs(self)
         self.code_window = None
@@ -81,6 +107,9 @@ class CustomIDE(QMainWindow):
         self.highlighter = None
         self.set_up_file_editor()
 
+        names.append("file editor")
+        ts.append(time.perf_counter_ns())
+
         self.file_box = QWidget()
         self.model = QFileSystemModel()
         self.project_viewer = ProjectViewer(self)
@@ -88,23 +117,40 @@ class CustomIDE(QMainWindow):
         self.current_project_root_str = None
         self.set_up_project_viewer()
 
-        self.grid_layout = None
+        names.append("project viewer")
+        ts.append(time.perf_counter_ns())
 
+        self.grid_layout = None
         self.main_box = QWidget(self)
         self.splitter = None
         self.set_up_layout()
 
+        names.append("layout")
+        ts.append(time.perf_counter_ns())
+
         self.set_up_from_save_state()
+
+        names.append("save state")
+        ts.append(time.perf_counter_ns())
 
         self.plugin_objects = []
         self.set_up_plugins()
 
+        names.append("plugins")
+        ts.append(time.perf_counter_ns())
+
         self.toolbar = None
         self.set_up_toolbar()
+
+        names.append("tool bar")
+        ts.append(time.perf_counter_ns())
 
         self.menu_bar = self.menuBar()
         self.search_bar = None
         self.set_up_menu_bar(shortcuts)
+
+        names.append("menu bar")
+        ts.append(time.perf_counter_ns())
 
         # get the linter working.
         self.timer = QTimer(self)
@@ -112,6 +158,9 @@ class CustomIDE(QMainWindow):
         self.linting_worker = None
         self.is_linting_currently = False
         self.set_up_linting()
+
+        names.append("linter")
+        ts.append(time.perf_counter_ns())
 
         # this is to auto-save the ide_state and such, essentially for
         # running the 'before close' over and over so that
@@ -125,10 +174,24 @@ class CustomIDE(QMainWindow):
         self.auto_save_timer.timeout.connect(auto_save_ide_state)
         self.auto_save_timer.start(15000)  # run every 15 seconds.
 
+        names.append("auto save")
+        ts.append(time.perf_counter_ns())
+
         self.statusBar().showMessage('Ready', 3000)
         # right at the end, grab focus to the code editor
         self.file_tabs.set_syntax_highlighter()
+        self.code_window: QCodeEditor
         self.code_window.setFocus()
+
+        names.append("final setup")
+        ts.append(time.perf_counter_ns())
+
+        t_intervals = [ts[i] - ts[i-1] for i in range(1, len(ts))]
+        named_intervals = list(zip(names, t_intervals))
+
+        named_intervals.sort(key=lambda interval: interval[1], reverse=True)
+        print("Time taken:")
+        print(*[ f"{n.ljust(15)}: {t / 1_000_000}ms" for n, t in named_intervals], sep="\n")
 
         self.splash.finish(self)
         self.show()
@@ -194,9 +257,10 @@ class CustomIDE(QMainWindow):
         autocomplete_prompts = syntax.PythonHighlighter.built_ins
         autocomplete_dict = {
             "main": ("if __name__ == \"__main__\":", -1),
-            "compl": ("[_ for _ in []]", 1, 2),
-            "compg": ("(_ for _ in [])", 1, 2),
-            "compd": ("{_: _ for _ in []}", 1, 2),
+            "comprehension_list": ("[_ for _ in []]", 1, 2),
+            "comprehension_set": ("{_ for _ in []}", 1, 2),
+            "comprehension_gen": ("(_ for _ in [])", 1, 2),
+            "comprehension_dict": ("{_: _ for _ in []}", 1, 2),
         }
 
         autocomplete_prompts += list(autocomplete_dict.keys())
