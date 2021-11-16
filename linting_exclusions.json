@@ -1,5 +1,6 @@
 {
   "linting_exclusions": [
-    "C0103"
+    "C0103",
+    "C0116"
   ]
 }
