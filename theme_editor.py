@@ -186,7 +186,7 @@ class ThemeOption(QWidget):
 
         # determine type of option purely from option arguments.
         # done so no checking has to be done before creation.
-        if type(args) == str:
+        if isinstance(args, str):
             args: str
             if args.startswith("#"):
                 default_color = args
@@ -194,7 +194,7 @@ class ThemeOption(QWidget):
             else:
                 string_option = args
                 option_type = "string"
-        elif type(args) == list:
+        elif isinstance(args, list):
             args: list
             if len(args) == 1 and args[0].startswith("#"):
                 default_color = args[0]
@@ -205,7 +205,7 @@ class ThemeOption(QWidget):
                 option_type = "styled color"
             else:
                 return
-        elif type(args) == int:
+        elif isinstance(args, int):
             args: int
             int_option = args
             option_type = "int"
@@ -222,7 +222,7 @@ class ThemeOption(QWidget):
 
             def button_push(color_name: Union[str, bool] = None) -> None:
                 """ On button push, allow user to select a color """
-                if color_name is None or type(color_name) == bool:
+                if color_name is None or isinstance(color_name, bool):
                     color = QColorDialog.getColor()
                     color_name = color.name()
                 else:

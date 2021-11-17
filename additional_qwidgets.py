@@ -327,7 +327,7 @@ class QCodeEditor(QPlainTextEdit):
         if self.text_input_mode == QCodeEditor.RawTextInput:
             return QPlainTextEdit.keyPressEvent(self, event)
 
-        if type(self.application.highlighter) == syntax.JSONHighlighter:
+        if isinstance(self.application.highlighter, syntax.JSONHighlighter):
             return self.non_auto_complete_key_event(event)
 
         # if deleting, preserve old locations, updates more in non_auto_complete_key_event
@@ -915,11 +915,11 @@ class QCodeEditor(QPlainTextEdit):
 
             completer_result = self.auto_complete_dict[completion]
 
-            if type(completer_result) == str:
+            if isinstance(completer_result, str):
                 completer_text = completer_result
                 sel_start = -1
                 sel_end = -1
-            elif type(completer_result) == tuple or type(completer_result) == list:
+            elif isinstance(completer_result, tuple) or isinstance(completer_result, list):
                 if len(completer_result) == 2:  # 2 values
                     completer_text = completer_result[0]
                     sel_start = completer_result[1]

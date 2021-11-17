@@ -964,7 +964,7 @@ class CustomIDE(QMainWindow):
             return
 
         # for double click
-        if type(filepath) == QModelIndex:
+        if isinstance(filepath, QModelIndex):
             last_index = filepath
             file_paths = []
 
