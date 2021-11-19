@@ -876,11 +876,9 @@ class QCodeEditor(QPlainTextEdit):
             tc.movePosition(QTextCursor.Down)
             tc.setPosition(tc.position() - tc.positionInBlock() - 1)
 
-        self.setTextCursor(tc)
         self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier, '\n'))
 
         # now that we're on a new line, insert the block signature
-
         # refresh tc (just in case)
         tc = self.textCursor()
         tc.insertText(block_signature)
@@ -890,9 +888,17 @@ class QCodeEditor(QPlainTextEdit):
             self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_ParenLeft, Qt.NoModifier, '('))
             # refresh tc again
             tc = self.textCursor()
-
-        tc.movePosition(QTextCursor.Right)
+            tc_pos = tc.position()
+            tc.movePosition(QTextCursor.Right)
+        else:
+            tc_pos = tc.position() + 1
         tc.insertText(":")
+
+        self.setTextCursor(tc)
+        self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier, '\n'))
+        tc.insertText("pass")
+        tc.setPosition(tc_pos)
+        self.setTextCursor(tc)
 
     def set_completer(self, c):
         self._completer = c
