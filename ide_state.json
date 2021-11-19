@@ -1,9 +1,9 @@
 {
   "projects_folder": "~/PycharmProjects",
-  "project_dir": "~/PycharmProjects/levenshtein_edit",
+  "project_dir": "~/PycharmProjects/geometry_and_math",
   "current_opened_files": [
-    "main.py",
-    "liskov.py"
+    "homogeneous_coordinates.py",
+    "line_intersections.py"
   ],
   "editor_font_family": "Ubuntu Mono",
   "editor_font_size": 14,
@@ -17,10 +17,10 @@
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    4079,
-    1121,
-    1440,
-    773
+    0,
+    27,
+    3840,
+    2096
   ],
   "project_viewer_splitter_pos": 255
 }

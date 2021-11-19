@@ -106,7 +106,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
     braces = list(map(escape, list("()[]{}")))
 
     # Python builtins
-    built_ins = list(map(lambda x: x[0], inspect.getmembers(builtins)))
+    built_ins = list(filter(lambda x: x not in ["True", "False", "None"],
+                            map(lambda x: x[0], inspect.getmembers(builtins))))
 
     def __init__(self, parent: QtGui.QTextDocument, ide_object) -> None:
         super().__init__(parent)
