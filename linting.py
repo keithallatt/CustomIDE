@@ -75,34 +75,45 @@ class LintingWorker(QObject):
             filename = tempfile.mktemp(suffix='.py')
             with open(filename, 'w', encoding="utf-8") as file_obj:
                 file_obj.write(code)
-        # if not self.pylint_installed_in_venv:
-        #     pip_bin = self.application.ide_state.get("python_bin_location", "/usr/bin/pip3")
-        #
-        #     # look for venv
-        #     venv_file_path = self.application.current_project_root_str
-        #     if not venv_file_path.endswith(os.sep):
-        #         venv_file_path += os.sep
-        #
-        #     venv_file_path += os.sep.join(['venv', 'bin', 'pip3'])
-        #
-        #     if os.path.exists(venv_file_path):
-        #         pip_bin = venv_file_path
-        #
-        #     proc = subprocess.Popen([pip_bin, "list"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #     result = proc.communicate()[0]
-        #
-        #     if b"\npylint" not in result:
-        #         subprocess.call([pip_bin, "install", "pylint"])
-        #
-        #     self.pylint_installed_in_venv = True
-        #
-        #
 
-        (pylint_stdout, pylint_stderr) = lint.py_run(f"{filename} --output-format='json'", return_std=True)
-        stdout = pylint_stdout.read()
+        # look for venv
+        venv_file_path = self.application.current_project_root_str
+        if not venv_file_path.endswith(os.sep):
+            venv_file_path += os.sep
 
-        # set the results for the code editor to use for line highlights
-        self.linting_results = loads(stdout)
+        venv_file_path += os.sep.join(['venv', 'bin'])
+
+        if os.path.exists(venv_file_path):
+            python_bin = venv_file_path
+
+            # TODO if errors start popping up, uncomment.
+
+            # pip_bin = os.sep.join([python_bin, 'pip3'])
+            pylint_bin = os.sep.join([python_bin, 'pylint'])
+
+            # installs pylint to venv (necessary for linting, not best practices though)
+            # subprocess.call([pip_bin, '-q', '-q', 'install', 'pylint'])
+
+            command = [pylint_bin, filename, "-f", "json"]
+
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (pylint_stdout, pylint_stderr) = proc.communicate()
+
+            stdout = pylint_stdout.decode('utf-8')
+            stderr = pylint_stderr.decode('utf-8')
+
+            if stderr.strip():
+                print(stderr)
+
+            self.linting_results = loads(stdout)
+        else:
+            (pylint_stdout, pylint_stderr) = lint.py_run(f"{filename} --output-format='json'",
+                                                         return_std=True)
+            stdout = pylint_stdout.read()
+
+            # set the results for the code editor to use for line highlights
+            self.linting_results = loads(stdout)
+
         # emit a finishing signal
         try:
             if hasattr(self.finished, 'emit'):
