@@ -136,8 +136,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         # kwargs needs to be before builtins. This way
         # for things like def 'foo(x: str = 3):', the type hint will still appear highlighted
         rules += [
-            # kwargs-> needs testing
-            (r'\(.*([a-zA-Z_][a-zA-Z_0-9]*)\s*=[^=].*\)', 1, STYLES['kwargs']),
+            # kwargs -> need to figure out properly once and for all.
 
             # gets rid of them in function definitions (returns to default editor color.)
             (r'\bdef\b\s*[a-zA-Z_][a-zA-Z_0-9]*\s*\(.*([a-zA-Z_][a-zA-Z_0-9]*)\s*=[^=].*\)', 1,
@@ -151,7 +150,6 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         rules += [
             # 'self'
             (r'\bself\b', 0, STYLES['self']),
-
 
             # double underscore methods. place earlier so it gets overridden by other rules.
             (r'__[a-zA-z](\w)*__', 0, STYLES['double_under']),

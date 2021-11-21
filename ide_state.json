@@ -1,26 +1,25 @@
 {
   "projects_folder": "~/PycharmProjects",
-  "project_dir": "~/PycharmProjects/geometry_and_math",
+  "project_dir": "~/Documents/ProgrammingFun",
   "current_opened_files": [
-    "homogeneous_coordinates.py",
-    "line_intersections.py"
+    "prntsc.py"
   ],
   "editor_font_family": "Ubuntu Mono",
   "editor_font_size": 14,
   "ide_theme": "default.json",
   "syntax_highlighter": "default.json",
   "save_on_close_automatically": false,
-  "selected_tab": 1,
+  "selected_tab": 0,
   "save_on_run": false,
   "file_box_hidden": false,
   "tool_bar_hidden": false,
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    0,
-    27,
     3840,
-    2096
+    585,
+    1920,
+    1043
   ],
-  "project_viewer_splitter_pos": 255
+  "project_viewer_splitter_pos": 468
 }
