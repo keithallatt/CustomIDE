@@ -797,12 +797,12 @@ class QCodeEditor(QPlainTextEdit):
 
                 severity = -3
                 for lint_result in self.linting_results:
-                    if lint_result['line_number'] == block_number + 1:
+                    if lint_result['line'] == block_number + 1:
                         lint_kind_severity = -1
-                        if lint_result['kind'] in self.linting_severities:
-                            lint_kind_severity = self.linting_severities.index(lint_result['kind'])
+                        if lint_result['type'] in self.linting_severities:
+                            lint_kind_severity = self.linting_severities.index(lint_result['type'])
 
-                        lint_message = lint_result['message'] + " " + lint_result['lint_code']
+                        lint_message = lint_result['message'] + " " + lint_result['message-id']
 
                         if lint_kind_severity >= severity:
                             self.line_number_area_linting_tooltips[block_number + 1] = lint_message

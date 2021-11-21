@@ -6,6 +6,7 @@ import logging
 import tempfile
 import time
 import os
+import subprocess
 
 from json import loads, dumps
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -28,6 +29,7 @@ class LintingWorker(QObject):
         to a new thread.
         """
         super().__init__()
+        # self.pylint_installed_in_venv = False
         self.application = parent
         self.linting_results = None
         self.linting_debug_messages = False
@@ -73,40 +75,34 @@ class LintingWorker(QObject):
             filename = tempfile.mktemp(suffix='.py')
             with open(filename, 'w', encoding="utf-8") as file_obj:
                 file_obj.write(code)
+        # if not self.pylint_installed_in_venv:
+        #     pip_bin = self.application.ide_state.get("python_bin_location", "/usr/bin/pip3")
+        #
+        #     # look for venv
+        #     venv_file_path = self.application.current_project_root_str
+        #     if not venv_file_path.endswith(os.sep):
+        #         venv_file_path += os.sep
+        #
+        #     venv_file_path += os.sep.join(['venv', 'bin', 'pip3'])
+        #
+        #     if os.path.exists(venv_file_path):
+        #         pip_bin = venv_file_path
+        #
+        #     proc = subprocess.Popen([pip_bin, "list"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #     result = proc.communicate()[0]
+        #
+        #     if b"\npylint" not in result:
+        #         subprocess.call([pip_bin, "install", "pylint"])
+        #
+        #     self.pylint_installed_in_venv = True
+        #
+        #
 
-        (pylint_stdout, pylint_stderr) = lint.py_run(filename, return_std=True)
-
-        # get warnings and errors and such from pylint object
-        all_results = []
-
-        for line in pylint_stdout.read().split("\n"):
-            parts_of_line = line.strip().split(":")
-            if len(parts_of_line) != 3:
-                # make sure this is correct first
-                continue
-
-            error = parts_of_line[2].strip()
-            kind = error.split(" ")[0]
-
-            error = error[len(kind) + 1:]
-            error_code_type = error[:error.index(")") + 1]
-            message = error[len(error_code_type) + 1:]
-
-            linting_code = error_code_type.replace("(", "").split(", ")[0]
-
-            if linting_code in self.linting_exclusions:
-                continue
-
-            all_results.append({
-                'filename': parts_of_line[0],
-                'line_number': int(parts_of_line[1].strip()),
-                'kind': kind,
-                'lint_code': error_code_type,
-                'message': message
-            })
+        (pylint_stdout, pylint_stderr) = lint.py_run(f"{filename} --output-format='json'", return_std=True)
+        stdout = pylint_stdout.read()
 
         # set the results for the code editor to use for line highlights
-        self.linting_results = all_results
+        self.linting_results = loads(stdout)
         # emit a finishing signal
         try:
             if hasattr(self.finished, 'emit'):
