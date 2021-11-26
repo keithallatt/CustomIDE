@@ -1014,6 +1014,7 @@ class CustomIDE(QMainWindow):
             self.code_window.text_input_mode = QCodeEditor.RawTextInput
             self.code_window.setPlainText(CustomIDE.NO_FILES_OPEN_TEXT)
             self.code_window.setEnabled(False)
+            self.code_window.repaint()
 
     def rename_file(self):
         filepath = self.get_file_from_viewer()

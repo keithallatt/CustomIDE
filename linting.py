@@ -86,7 +86,7 @@ class LintingWorker(QObject):
         if os.path.exists(venv_file_path):
             python_bin = venv_file_path
 
-            # TODO if errors start popping up, uncomment.
+            # if errors start popping up, uncomment.
 
             # pip_bin = os.sep.join([python_bin, 'pip3'])
             pylint_bin = os.sep.join([python_bin, 'pylint'])

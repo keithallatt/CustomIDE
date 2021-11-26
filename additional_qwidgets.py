@@ -815,6 +815,8 @@ class QCodeEditor(QPlainTextEdit):
                     lint_kind = self.linting_severities[severity]
 
                 lint_color = self.linting_colors.get(lint_kind, window_color)
+                if not self.isEnabled():
+                    lint_color = window_color
 
                 painter.fillRect(0, int(top), self.lint_width, int(height), lint_color)
                 painter.fillRect(self.lint_width, int(top), int(self.lineNumberArea.width()) - self.lint_width,
@@ -1013,7 +1015,7 @@ class QCodeFileTabs(QTabWidget):
 
         self.setTabsClosable(True)
         self.tabCloseRequested: pyqtBoundSignal
-        self.tabCloseRequested.connect(self.close_tab)
+        self.tabCloseRequested.connect(self.application.close_file)
 
     @property
     def current_file_selected(self):
@@ -1084,6 +1086,9 @@ class QCodeFileTabs(QTabWidget):
         last_tab = self.tabText(index)
         if last_tab not in self.temp_files.keys():
             # keep until program quits.
+            if '.' not in last_tab:
+                # potential issue, but weird stuff happened to get this block to raise an exception.
+                print(f". not in {last_tab}")
             self.temp_files.update({last_tab: tempfile.mkstemp(suffix=last_tab[last_tab.index('.'):])[1]})
         last_temp_file = self.temp_files[last_tab]
         code_to_save = self.application.code_window.toPlainText()
