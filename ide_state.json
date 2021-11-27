@@ -2,25 +2,24 @@
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/CodingInterviewQuestions",
   "current_opened_files": [
-    "find_hyperbolic_line.py",
-    "fizzbuzz.py"
+    "find_hyperbolic_line.py"
   ],
   "editor_font_family": "Ubuntu Mono",
   "editor_font_size": 14,
-  "ide_theme": "default.json",
-  "syntax_highlighter": "default.json",
+  "ide_theme": "custom_blue.json",
+  "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 1,
+  "selected_tab": 0,
   "save_on_run": false,
   "file_box_hidden": false,
   "tool_bar_hidden": false,
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    3840,
-    585,
-    1920,
-    1043
+    859,
+    202,
+    2880,
+    1562
   ],
   "project_viewer_splitter_pos": 468
 }

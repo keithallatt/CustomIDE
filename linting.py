@@ -37,6 +37,7 @@ class LintingWorker(QObject):
         self.linting_exclusions = []
         if os.path.exists("linting_exclusions.json"):
             self.linting_exclusions = loads(open("linting_exclusions.json", 'r').read()).get('linting_exclusions', [])
+            print(self.linting_exclusions)
 
     def reset_exclusions(self) -> None:
         """ Reset the list of linting exclusions  """
@@ -114,6 +115,9 @@ class LintingWorker(QObject):
             # set the results for the code editor to use for line highlights
             self.linting_results = loads(stdout)
 
+        self.linting_results = list(filter(
+            lambda x: x['message-id'] not in self.linting_exclusions, self.linting_results))
+
         # emit a finishing signal
         try:
             if hasattr(self.finished, 'emit'):
@@ -132,6 +136,7 @@ class LintingWorker(QObject):
             # not viewing a python file / no file open / project is closed
             self.application.code_window.linting_results = []  # remove linting results.
             self.application.code_window.line_number_area_linting_tooltips = dict()
+            self.application.highlighter.linting_results = []
 
         while True:
             # try sleeping first, if we run into a guard statement,

@@ -739,6 +739,9 @@ class CustomIDE(QMainWindow):
     def perform_lint(self):
         def worker_finished():
             self.code_window.linting_results = self.linting_worker.linting_results
+            if self.highlighter is not None:
+                self.highlighter.linting_results = self.linting_worker.linting_results
+                self.highlighter.rehighlight()
             self.code_window.repaint()
             self.is_linting_currently = False
 

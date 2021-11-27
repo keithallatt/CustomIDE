@@ -11,6 +11,8 @@ Also updated as the original looked like it did not handle things such as:
 - escape sequences
 - a few other small features
 """
+import re
+
 from PyQt5 import QtCore, QtGui
 from json import loads, dumps
 from re import escape
@@ -19,10 +21,12 @@ import inspect
 import os
 import keyword
 
+from PyQt5.QtGui import QColor
+
 
 def format_color(color, style=''):
     """ Return a QTextCharFormat with the given attributes. """
-    _color = QtGui.QColor()
+    _color = QColor()
     _color.setNamedColor(color)
 
     _format = QtGui.QTextCharFormat()
@@ -120,6 +124,16 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
 
         self.triple_quotes_within_strings = []
 
+        self.linting_results = []
+        # should be same as in additional_qwidgets.py but yk easy solution for now,
+        # maybe a little brighter on some
+        self.linting_colors = {
+            'refactor': QColor("#765432"),
+            'convention': QColor("#555599"),
+            'warning': QColor("#99aa22"),
+            'error': QColor("#ee3322"),
+        }
+
         self.string_locations = []
         self._string_locations = []
 
@@ -160,8 +174,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
             (r'\bclass\b\s*(\w+)', 1, STYLES['def_class']),
 
             # Numeric literals
-            (r'\b[+-]?[0-9]+[lL]?\b', 0, STYLES['numbers']),
-            (r'\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b', 0, STYLES['numbers']),
+            (r'\b[+-]?[0-9]+[lLj]?\b', 0, STYLES['numbers']),
+            (r'\b[+-]?0[xX][0-9A-Fa-f]+[lLj]?\b', 0, STYLES['numbers']),
             (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0, STYLES['numbers']),
 
             # strings, possibly containing escape sequences
@@ -187,6 +201,7 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         """Apply syntax highlighting to the given block of text. """
         self.triple_quotes_within_strings = []
         self._string_locations = []
+
         # Do other syntax formatting
         for expression, nth, format_ in self.rules:
             def get_index(input_text, start_at, ex=expression):
@@ -281,6 +296,39 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         # only resets after the entire highlighting process.
         # should prevent polling of string locations giving partial results.
         self.string_locations = self._string_locations
+
+        line_number = self.currentBlock().blockNumber() + 1
+
+        linting_results_for_line = list(filter(lambda x: x['line'] == line_number, self.linting_results))
+        # print(line_number, linting_results_for_line)
+
+        _color = QtGui.QColor()
+        _color.setNamedColor("gray")
+        line_text = self.currentBlock().text()
+
+        for result in linting_results_for_line:
+            position = result['column']
+            # get line of text after index
+            line_after_index = line_text[result['column']:].lstrip()  # remove whitespace for whole line ones,
+            search_result = re.findall(r".+\b", line_after_index)
+            if search_result:
+                search_result = search_result[0]
+                sr_len = len(search_result)
+            else:
+                sr_len = len(line_after_index)
+                if not len(line_after_index) or position >= len(line_text):
+                    position = len(line_text) - 1
+                    sr_len = 1
+
+            lint_color = self.linting_colors.get(result['type'], _color)
+
+            for position_index in range(position, position + sr_len):
+                _format = self.format(position_index)
+                _format.setFontUnderline(True)
+                _format.setUnderlineColor(lint_color)
+                _format.setUnderlineStyle(QtGui.QTextCharFormat.UnderlineStyle.WaveUnderline)
+
+                self.setFormat(position_index, 1, _format)
 
     def match_multiline(self, text, delimiter, in_state, style):
         """
