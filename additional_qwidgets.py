@@ -1095,6 +1095,11 @@ class QCodeFileTabs(QTabWidget):
         open(last_temp_file, 'w').write(code_to_save)
         return last_temp_file
 
+    def close_temp_files(self):
+        for tf in self.temp_files.values():
+            if os.path.exists(tf):
+                os.remove(tf)
+
     def file_selected_by_index(self, index: int) -> None:
         """
         When a tab is selected, save the old tab to a temp file before

@@ -848,6 +848,13 @@ class CustomIDE(QMainWindow):
 
         json_str = dumps(self.ide_state, indent=2)
         open("ide_state.json", 'w').write(json_str)
+
+        self.file_tabs.close_temp_files()
+
+        for tf in self.linting_worker.temp_files:
+            if os.path.exists(tf):
+                os.remove(tf)
+
         logging.info("Saved save state to file")
 
     def insert_code_block(self):

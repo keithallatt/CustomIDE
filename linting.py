@@ -35,6 +35,7 @@ class LintingWorker(QObject):
         self.linting_debug_messages = False
         self.linting_sleep = 0
         self.linting_exclusions = []
+        self.temp_files = []
         if os.path.exists("linting_exclusions.json"):
             self.linting_exclusions = loads(open("linting_exclusions.json", 'r').read()).get('linting_exclusions', [])
             print(self.linting_exclusions)
@@ -72,8 +73,11 @@ class LintingWorker(QObject):
         """
         assert (code is None) ^ (filename is None), \
             "Cannot have both code and filename specified nor neither."
+        remove_after = False
         if code is not None:
-            filename = tempfile.mktemp(suffix='.py')
+            remove_after = True
+            filename = tempfile.mkstemp(suffix='.py')[1]
+            self.temp_files.append(filename)
             with open(filename, 'w', encoding="utf-8") as file_obj:
                 file_obj.write(code)
 
@@ -117,6 +121,11 @@ class LintingWorker(QObject):
 
         self.linting_results = list(filter(
             lambda x: x['message-id'] not in self.linting_exclusions, self.linting_results))
+
+        if remove_after:
+            os.remove(filename)
+            if filename in self.temp_files:
+                self.temp_files.remove(filename)
 
         # emit a finishing signal
         try:
