@@ -145,7 +145,9 @@ class LintingWorker(QObject):
             # not viewing a python file / no file open / project is closed
             self.application.code_window.linting_results = []  # remove linting results.
             self.application.code_window.line_number_area_linting_tooltips = dict()
-            self.application.highlighter.linting_results = []
+
+            if self.application.highlighter:
+                self.application.highlighter.linting_results = []
 
         while True:
             # try sleeping first, if we run into a guard statement,
