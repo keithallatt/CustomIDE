@@ -123,7 +123,8 @@ class LintingWorker(QObject):
             lambda x: x['message-id'] not in self.linting_exclusions, self.linting_results))
 
         if remove_after:
-            os.remove(filename)
+            if os.path.exists(filename):
+                os.remove(filename)
             if filename in self.temp_files:
                 self.temp_files.remove(filename)
 
