@@ -2,7 +2,8 @@
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/CodingInterviewQuestions",
   "current_opened_files": [
-    "graph_algos_on_custom_objects.py"
+    "integral_approximator.py",
+    "intersection_area.py"
   ],
   "editor_font_family": "Ubuntu Mono",
   "editor_font_size": 14,
@@ -16,10 +17,10 @@
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
-    859,
-    202,
-    2880,
-    1562
+    3840,
+    585,
+    1920,
+    1043
   ],
   "project_viewer_splitter_pos": 468
 }

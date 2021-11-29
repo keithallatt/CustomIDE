@@ -32,6 +32,7 @@ class LintingWorker(QObject):
         # self.pylint_installed_in_venv = False
         self.application = parent
         self.linting_results = None
+        self.was_fatal = False
         self.linting_debug_messages = False
         self.linting_sleep = 0
         self.linting_exclusions = []
@@ -76,7 +77,7 @@ class LintingWorker(QObject):
         remove_after = False
         if code is not None:
             remove_after = True
-            filename = tempfile.mkstemp(suffix='.py')[1]
+            filename = tempfile.mkstemp(prefix="linting_", suffix='.py')[1]
             self.temp_files.append(filename)
             with open(filename, 'w', encoding="utf-8") as file_obj:
                 file_obj.write(code)
@@ -122,6 +123,18 @@ class LintingWorker(QObject):
         self.linting_results = list(filter(
             lambda x: x['message-id'] not in self.linting_exclusions, self.linting_results))
 
+        fatal_linting = list(filter(
+            lambda x: x['message-id'].startswith("F"), self.linting_results))
+
+        self.linting_results = list(filter(
+            lambda x: not x['message-id'].startswith("F"), self.linting_results))
+
+        self.was_fatal = False
+        if fatal_linting:
+            self.was_fatal = True
+            for lm in fatal_linting:
+                logging.error(f"Fatal Linting Error: {lm.get('message', '')}, {lm.get('message-id', '')}")
+
         if remove_after:
             if os.path.exists(filename):
                 os.remove(filename)
@@ -144,9 +157,10 @@ class LintingWorker(QObject):
         def clear_linting() -> None:
             """ Clear the linter results and tooltips, so that no stale results remain. """
             # not viewing a python file / no file open / project is closed
+            print("clearing in linting.py:run")
+
             self.application.code_window.linting_results = []  # remove linting results.
             self.application.code_window.line_number_area_linting_tooltips = dict()
-
             if self.application.highlighter:
                 self.application.highlighter.linting_results = []
 
@@ -160,6 +174,7 @@ class LintingWorker(QObject):
             if self.application.current_project_root is None:
                 if self.linting_debug_messages:
                     print("no project: ", time.time())
+                print("clearing in linting.py:run: current project root is none")
                 clear_linting()
                 continue
 
@@ -169,6 +184,7 @@ class LintingWorker(QObject):
             if current_file is None:
                 if self.linting_debug_messages:
                     print("no file: ", time.time())
+                print("clearing in linting.py:run: current file is none")
                 clear_linting()
                 continue
 
@@ -176,6 +192,7 @@ class LintingWorker(QObject):
             if not current_file.endswith(".py"):
                 if self.linting_debug_messages:
                     print("non-python file: ", time.time())
+                print("clearing in linting.py:run: non python file")
                 clear_linting()
                 continue
 

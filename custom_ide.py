@@ -167,7 +167,7 @@ class CustomIDE(QMainWindow):
         self.auto_save_timer = QTimer(self)
 
         def auto_save_ide_state():
-            self.before_close()
+            self.before_close(remove_temp_files=False)
             # Potentially show message, but can be distracting.
             # self.statusBar().showMessage("Saved IDE State", 1000)
 
@@ -186,7 +186,7 @@ class CustomIDE(QMainWindow):
         names.append("final setup")
         ts.append(time.perf_counter_ns())
 
-        t_intervals = [ts[i] - ts[i-1] for i in range(1, len(ts))]
+        t_intervals = [ts[i] - ts[i - 1] for i in range(1, len(ts))]
         named_intervals = list(zip(names, t_intervals))
 
         named_intervals.sort(key=lambda interval: interval[1], reverse=True)
@@ -443,6 +443,7 @@ class CustomIDE(QMainWindow):
 
     def set_up_menu_bar(self, shortcuts):
         """ Set up the menu bar with all the options. """
+
         def set_up_file_menu():
             # FILE MENU
             file_menu = self.menu_bar.addMenu('&File')
@@ -684,6 +685,7 @@ class CustomIDE(QMainWindow):
             help_menu = self.menu_bar.addMenu("&Help")
 
             github_repo_url = "https://github.com/keithallatt/CustomIDE"
+
             # using web browser module's open_new_tab causes Gtk-Message and libGL errors, but still works (?)
 
             def open_github_repo():
@@ -737,7 +739,19 @@ class CustomIDE(QMainWindow):
         self.project_viewer.selectionModel().select(i, QItemSelectionModel.SelectionFlag.Select)
 
     def perform_lint(self):
+        def clean_up_linting_results(lr):
+            # 'no module named /tmp' issue looks like its coming from the linting temp file
+            # creation and deletion, so there is an underlying issue.
+            return str([[k, v] for k, v in lr.items() if
+                        not (k in ['path', 'module'] or str(v).startswith("No module named /tmp"))])
+
         def worker_finished():
+            cw = set(map(clean_up_linting_results, self.code_window.linting_results))
+            lw = set(map(clean_up_linting_results, self.linting_worker.linting_results))
+            if not cw.symmetric_difference(lw) or self.linting_worker.was_fatal:
+                # prevent changing and calling repaints when nothings changed or a fatal caused an issue
+                return
+
             self.code_window.linting_results = self.linting_worker.linting_results
             if self.highlighter is not None:
                 self.highlighter.linting_results = self.linting_worker.linting_results
@@ -805,7 +819,7 @@ class CustomIDE(QMainWindow):
 
         logging.info(f"Performed `pip {function}`")
 
-    def before_close(self):
+    def before_close(self, remove_temp_files=True):
         if self.current_project_root is not None:
             files_to_reopen = []
             current_root_len = len(self.current_project_root_str)
@@ -849,11 +863,11 @@ class CustomIDE(QMainWindow):
         json_str = dumps(self.ide_state, indent=2)
         open("ide_state.json", 'w').write(json_str)
 
-        self.file_tabs.close_temp_files()
-
-        for tf in self.linting_worker.temp_files:
-            if os.path.exists(tf):
-                os.remove(tf)
+        if remove_temp_files:
+            self.file_tabs.close_temp_files()
+            for tf in self.linting_worker.temp_files:
+                if os.path.exists(tf):
+                    os.remove(tf)
 
         logging.info("Saved save state to file")
 
@@ -897,7 +911,7 @@ class CustomIDE(QMainWindow):
         save_from = dict()
         for k, v in self.file_tabs.temp_files.items():
             file = proj_root + k
-            if not os.path.exists(file):
+            if not os.path.exists(file) or not os.path.exists(v):
                 print("File missing, probably deleted:", file)
                 continue
             if open(file, 'r').read() != open(v, 'r').read():
@@ -994,7 +1008,7 @@ class CustomIDE(QMainWindow):
         if root_full.endswith(os.sep):
             filename = filepath[len(root_full):]
         else:
-            filename = filepath[len(root_full)+1:]
+            filename = filepath[len(root_full) + 1:]
 
         self.current_opened_files.add(filepath)
         self.file_tabs.open_tab(filename)
@@ -1030,7 +1044,7 @@ class CustomIDE(QMainWindow):
         filepath = self.get_file_from_viewer()
 
         file_root = os.path.dirname(filepath)
-        filename = filepath[len(file_root)+1:]
+        filename = filepath[len(file_root) + 1:]
 
         new_name, ok = QInputDialog.getText(self, f'Rename File', 'File name:')
 

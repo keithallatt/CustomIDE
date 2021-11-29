@@ -1122,7 +1122,14 @@ class QCodeFileTabs(QTabWidget):
         self.application.code_window.lineNumberArea.setToolTip('')
         self.application.code_window.repaint()
 
-        self.application.code_window.setPlainText(open(next_temp_file, 'r').read())
+        try:
+            self.application.code_window.setPlainText(open(next_temp_file, 'r').read())
+        except FileNotFoundError:
+            print("Trying to open:", next_temp_file)
+            print(self.temp_files)
+            print("line 1130-ish: additional_qwidgets")
+            exit(134)
+
 
         self.last_tab_index = index
         self._last_file_selected = next_tab
