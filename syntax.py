@@ -309,7 +309,8 @@ class PythonHighlighter(QtGui.QSyntaxHighlighter):
         for result in linting_results_for_line:
             position = result['column']
             # get line of text after index
-            line_after_index = line_text[result['column']:].lstrip()  # remove whitespace for whole line ones,
+            line_after_index = line_text[result['column']:]
+
             search_result = re.findall(r".+\b", line_after_index)
             if search_result:
                 search_result = search_result[0]

@@ -10,17 +10,17 @@
   "ide_theme": "custom_blue.json",
   "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 0,
+  "selected_tab": 1,
   "save_on_run": false,
   "file_box_hidden": false,
   "tool_bar_hidden": false,
   "tool_bar_position": "top",
   "search_completion": "popup",
   "window_geometry": [
+    0,
+    27,
     3840,
-    585,
-    1920,
-    1043
+    2096
   ],
   "project_viewer_splitter_pos": 468
 }
