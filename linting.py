@@ -157,7 +157,7 @@ class LintingWorker(QObject):
         def clear_linting() -> None:
             """ Clear the linter results and tooltips, so that no stale results remain. """
             # not viewing a python file / no file open / project is closed
-            print("clearing in linting.py:run")
+            # print("clearing in linting.py:run")
 
             self.application.code_window.linting_results = []  # remove linting results.
             self.application.code_window.line_number_area_linting_tooltips = dict()
@@ -172,9 +172,9 @@ class LintingWorker(QObject):
 
             # if no project is open, continue
             if self.application.current_project_root is None:
-                if self.linting_debug_messages:
-                    print("no project: ", time.time())
-                print("clearing in linting.py:run: current project root is none")
+                # if self.linting_debug_messages:
+                #     print("no project: ", time.time())
+                # print("clearing in linting.py:run: current project root is none")
                 clear_linting()
                 continue
 
@@ -182,30 +182,30 @@ class LintingWorker(QObject):
 
             # if a project is open, but no files open, also continue
             if current_file is None:
-                if self.linting_debug_messages:
-                    print("no file: ", time.time())
-                print("clearing in linting.py:run: current file is none")
+                # if self.linting_debug_messages:
+                #     print("no file: ", time.time())
+                # print("clearing in linting.py:run: current file is none")
                 clear_linting()
                 continue
 
             # if the file isn't a python file, and thus linting results don't matter
             if not current_file.endswith(".py"):
-                if self.linting_debug_messages:
-                    print("non-python file: ", time.time())
-                print("clearing in linting.py:run: non python file")
+                # if self.linting_debug_messages:
+                #     print("non-python file: ", time.time())
+                # print("clearing in linting.py:run: non python file")
                 clear_linting()
                 continue
 
-            if self.linting_debug_messages:
-                print("Run iter at time: ", time.time())
+            # if self.linting_debug_messages:
+            #     print("Run iter at time: ", time.time())
 
             try:
                 # run the linter, may run into runtime error around the time the application closes
                 # but in that case, just stop linting.
                 self.run_linter_on_code(code=self.application.code_window.toPlainText())
             except RuntimeError:
-                if self.linting_debug_messages:
-                    print("Runtime error")
+                # if self.linting_debug_messages:
+                #     print("Runtime error")
                 # maybe don't use break, but if code editor was deleted, then we should be done
                 break
 

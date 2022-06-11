@@ -1,26 +1,23 @@
 {
   "projects_folder": "~/PycharmProjects",
   "project_dir": "~/PycharmProjects/CodingInterviewQuestions",
-  "current_opened_files": [
-    "integral_approximator.py",
-    "intersection_area.py"
-  ],
+  "current_opened_files": [],
   "editor_font_family": "Ubuntu Mono",
   "editor_font_size": 14,
   "ide_theme": "custom_blue.json",
   "syntax_highlighter": "custom_blue.json",
   "save_on_close_automatically": false,
-  "selected_tab": 1,
+  "selected_tab": -1,
   "save_on_run": false,
   "file_box_hidden": false,
   "tool_bar_hidden": false,
-  "tool_bar_position": "top",
+  "tool_bar_position": "left",
   "search_completion": "popup",
   "window_geometry": [
-    0,
-    27,
-    3840,
-    2096
+    3998,
+    442,
+    1440,
+    1016
   ],
-  "project_viewer_splitter_pos": 468
+  "project_viewer_splitter_pos": 360
 }
